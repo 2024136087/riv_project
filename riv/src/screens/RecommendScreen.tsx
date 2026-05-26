@@ -233,6 +233,31 @@ function makeStyles(C: ColorScheme) {
       fontWeight: '700',
       fontSize: 14,
     },
+    notFoundContainer: {
+      marginTop: 10,
+      gap: 6,
+    },
+    notFoundRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      backgroundColor: C.background,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    notFoundText: {
+      flex: 1,
+      fontSize: 12,
+      color: C.textSecondary,
+      lineHeight: 17,
+    },
+    notFoundTitle: {
+      fontWeight: '700',
+      color: C.textPrimary,
+    },
   });
 }
 
@@ -280,11 +305,16 @@ export default function RecommendScreen() {
 
       const titles = extractTitles(reply);
       let books: Book[] = [];
+      let notFoundTitles: string[] = [];
       if (titles.length > 0) {
         const results = await Promise.all(titles.map(t => searchBooks(t, 1)));
-        books = results
-          .map(r => r[0])
-          .filter((b): b is Book => !!b);
+        results.forEach((r, i) => {
+          if (r[0]) {
+            books.push(r[0]);
+          } else {
+            notFoundTitles.push(titles[i]);
+          }
+        });
         books = books.filter((b, i, arr) => arr.findIndex(x => x.isbn === b.isbn) === i);
       }
 
@@ -294,6 +324,7 @@ export default function RecommendScreen() {
         content: reply,
         timestamp: Date.now(),
         books: books.length > 0 ? books : undefined,
+        notFoundTitles: notFoundTitles.length > 0 ? notFoundTitles : undefined,
         suggestions: suggestions.length > 0 ? suggestions : undefined,
       };
       setMessages(prev => [...prev, assistantMsg]);
@@ -377,30 +408,46 @@ export default function RecommendScreen() {
             </View>
           )}
 
-          {item.books && item.books.length > 0 && (
+          {(item.books || item.notFoundTitles) && (
             <View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.bookScroll}
-                contentContainerStyle={styles.bookScrollContent}
-              >
-                {item.books.map(book => (
-                  <TouchableOpacity
-                    key={book.isbn + book.title}
-                    style={styles.bookCard}
-                    onPress={() => handleBookPress(book)}
-                  >
-                    <Image
-                      source={{ uri: book.thumbnail || 'https://picsum.photos/seed/default/80/110' }}
-                      style={styles.bookImage}
-                      resizeMode="cover"
-                    />
-                    <Text style={styles.bookTitle} numberOfLines={2}>{book.title}</Text>
-                    <Text style={styles.bookAuthor} numberOfLines={1}>{book.authors[0]}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              {item.books && item.books.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.bookScroll}
+                  contentContainerStyle={styles.bookScrollContent}
+                >
+                  {item.books.map(book => (
+                    <TouchableOpacity
+                      key={book.isbn + book.title}
+                      style={styles.bookCard}
+                      onPress={() => handleBookPress(book)}
+                    >
+                      <Image
+                        source={{ uri: book.thumbnail || 'https://picsum.photos/seed/default/80/110' }}
+                        style={styles.bookImage}
+                        resizeMode="cover"
+                      />
+                      <Text style={styles.bookTitle} numberOfLines={2}>{book.title}</Text>
+                      <Text style={styles.bookAuthor} numberOfLines={1}>{book.authors[0]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+
+              {item.notFoundTitles && item.notFoundTitles.length > 0 && (
+                <View style={styles.notFoundContainer}>
+                  {item.notFoundTitles.map(title => (
+                    <View key={title} style={styles.notFoundRow}>
+                      <Ionicons name="book-outline" size={13} color={C.textHint} style={{ marginTop: 1 }} />
+                      <Text style={styles.notFoundText}>
+                        <Text style={styles.notFoundTitle}>《{title}》</Text>
+                        {' '}은(는) 리브에 존재하지 않는 책입니다.
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               {item.id === [...messages].reverse().find(m => m.role === 'assistant')?.id && (
                 <TouchableOpacity

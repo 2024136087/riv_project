@@ -31,6 +31,7 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   books?: Book[];
+  notFoundTitles?: string[];
   suggestions?: string[];
   isDivider?: boolean;
 }
