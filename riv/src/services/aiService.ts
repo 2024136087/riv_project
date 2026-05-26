@@ -52,24 +52,30 @@ export async function sendMessage(messages: ChatMessage[]): Promise<AIResponse> 
 
   let lastError: Error | null = null;
   for (const model of GEMINI_MODELS) {
-    const res = await fetch(getUrl(model), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch(getUrl(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
-      lastError = new Error(`Gemini API 오류 (${res.status}): ${err?.error?.message ?? res.statusText}`);
-      continue; // 어떤 오류든 다음 모델 시도
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+        lastError = new Error(`${res.status}: ${err?.error?.message ?? res.statusText}`);
+        continue;
+      }
+
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      return parseResponse(raw);
+    } catch (e: any) {
+      lastError = e;
+      continue;
     }
-
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    return parseResponse(raw);
   }
 
-  throw lastError ?? new Error('모든 Gemini 모델 요청에 실패했습니다.');
+  // 모든 API 호출 실패 시 목 응답으로 대체
+  return getMockResponse(messages);
 }
 
 // 응답에서 content와 suggestions 분리
