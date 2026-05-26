@@ -56,6 +56,20 @@ function makeStyles(C: ColorScheme) {
       color: C.textPrimary,
       paddingVertical: 0,
     },
+    searchClear: { padding: 6 },
+    searchBtn: {
+      height: 40,
+      paddingHorizontal: 14,
+      backgroundColor: C.primary,
+      borderTopRightRadius: 9,
+      borderBottomRightRadius: 9,
+      justifyContent: 'center',
+    },
+    searchBtnText: {
+      color: C.white,
+      fontWeight: '700',
+      fontSize: 14,
+    },
 
     tabGridWrapper: {
       position: 'absolute',
@@ -205,6 +219,15 @@ export default function GenreScreen() {
     }, 400);
   }, [selectedGenre.kdc]);
 
+  const handleSearch = useCallback(async () => {
+    if (!query.trim()) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSearching(true);
+    const results = await searchBooksInGenre(query.trim(), selectedGenre.kdc);
+    setSearchResults(results);
+    setSearching(false);
+  }, [query, selectedGenre.kdc]);
+
   const handleBookPress = useCallback(
     async (book: Book) => {
       await addRecentBook(book);
@@ -238,20 +261,24 @@ export default function GenreScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.searchWrapper}>
         <View style={styles.searchRow}>
-          <Ionicons name="search" size={16} color={C.textHint} style={styles.searchIcon} />
+          <Ionicons name="search" size={15} color={C.textHint} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder={`'${selectedGenre.label}' 장르 내 검색`}
             placeholderTextColor={C.textHint}
             value={query}
             onChangeText={handleQueryChange}
+            onSubmitEditing={handleSearch}
             returnKeyType="search"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => handleQueryChange('')}>
+            <TouchableOpacity style={styles.searchClear} onPress={() => handleQueryChange('')}>
               <Ionicons name="close-circle" size={16} color={C.textHint} />
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
+            <Text style={styles.searchBtnText}>검색</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
