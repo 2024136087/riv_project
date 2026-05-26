@@ -18,42 +18,45 @@
       --success: #10B981;
       --white: #FFFFFF;
       --bg: #F8FAFF;
+      --nav-h: 80px; /* nav bar clearance */
+    }
+
+    html {
+      height: 100%;
+      scroll-snap-type: y mandatory;
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
                    'Noto Sans KR', 'Malgun Gothic', sans-serif;
       background: var(--dark);
-      overflow: hidden;
-      height: 100vh;
-      width: 100vw;
+      overflow-y: scroll;
+      height: 100%;
       user-select: none;
     }
 
-    .presentation { position: relative; width: 100%; height: 100%; }
+    .presentation { width: 100%; }
 
     /* ── Slide Base ── */
     .slide {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.4s ease;
+      position: relative;
+      min-height: 100vh;
+      scroll-snap-align: start;
     }
-    .slide.active   { opacity: 1; pointer-events: all; }
 
     /* ── Navigation ── */
     .nav {
       position: fixed;
-      bottom: 28px;
+      bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 14px;
       z-index: 200;
-      background: rgba(15,23,42,0.7);
+      background: rgba(15,23,42,0.75);
       backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       padding: 10px 22px;
       border-radius: 50px;
       border: 1px solid rgba(255,255,255,0.12);
@@ -90,7 +93,8 @@
       display: flex; flex-direction: column;
       justify-content: center; align-items: center;
       text-align: center; color: white;
-      overflow: hidden; position: relative;
+      overflow: hidden;
+      padding: 40px 24px var(--nav-h);
     }
     #s1::before {
       content: '';
@@ -103,7 +107,7 @@
     #s1::after {
       content: '';
       position: absolute;
-      width: 700px; height: 700px; border-radius: 50%;
+      width: min(700px, 90vw); height: min(700px, 90vw); border-radius: 50%;
       background: radial-gradient(circle, rgba(61,90,254,.14) 0%, transparent 68%);
       top: 50%; left: 50%; transform: translate(-50%,-50%);
     }
@@ -138,7 +142,7 @@
     }
     .t-meta {
       position: relative; z-index: 1;
-      display: flex; gap: 52px;
+      display: flex; gap: 52px; flex-wrap: wrap; justify-content: center;
     }
     .t-meta-item { text-align: center; }
     .t-meta-lbl {
@@ -153,9 +157,9 @@
     #s2 {
       background: var(--bg);
       display: flex; flex-direction: column;
-      padding: 56px 72px;
+      padding: 56px 72px var(--nav-h);
     }
-    .sh { display: flex; align-items: baseline; gap: 14px; margin-bottom: 36px; }
+    .sh { display: flex; align-items: baseline; gap: 14px; margin-bottom: 36px; flex-shrink: 0; }
     .sh-num { font-size: 15px; font-weight: 800; color: var(--primary); letter-spacing: 2px; text-transform: uppercase; }
     .sh-title { font-size: 44px; font-weight: 800; color: var(--text); }
 
@@ -193,7 +197,8 @@
       background: var(--primary);
       display: flex; flex-direction: column;
       justify-content: center; align-items: center;
-      text-align: center; padding: 0 80px 80px;
+      text-align: center;
+      padding: 60px 80px var(--nav-h);
       position: relative; overflow: hidden;
     }
     #s3::before {
@@ -225,6 +230,7 @@
     .v-chips {
       position: relative; z-index: 1;
       display: flex; gap: 12px; margin-top: 36px;
+      flex-wrap: wrap; justify-content: center;
     }
     .v-chip {
       padding: 10px 24px; border-radius: 50px;
@@ -239,7 +245,7 @@
     #s4 {
       background: var(--bg);
       display: flex; flex-direction: column;
-      padding: 56px 72px;
+      padding: 56px 72px var(--nav-h);
     }
     .sc-flow {
       display: flex; align-items: stretch; gap: 0; flex: 1; margin-top: 4px;
@@ -282,7 +288,7 @@
     #s5 {
       background: var(--dark2);
       display: flex; flex-direction: column;
-      padding: 56px 72px; color: white;
+      padding: 56px 72px var(--nav-h); color: white;
     }
     #s5 .sh-title { color: white; }
     #s5 .sh-num   { color: #818CF8; }
@@ -314,12 +320,13 @@
     #s6 {
       background: var(--bg);
       display: flex; flex-direction: column;
-      padding: 56px 72px;
+      padding: 56px 72px var(--nav-h);
     }
     .prog-bar-wrap {
       background: white; border-radius: 16px; padding: 22px 26px;
       box-shadow: 0 2px 16px rgba(0,0,0,.06);
       border: 1px solid var(--border); margin-bottom: 28px;
+      flex-shrink: 0;
     }
     .prog-bar-top {
       display: flex; justify-content: space-between;
@@ -372,6 +379,94 @@
     }
     .tag-done { background: #D1FAE5; color: #065F46; }
     .tag-plan { background: #F1F5F9; color: #64748B; }
+
+    /* ════════════════════════════════════════
+       RESPONSIVE — Tablet (≤1100px)
+    ════════════════════════════════════════ */
+    @media (max-width: 1100px) {
+      .t-logo { font-size: 90px; }
+      .t-sub  { font-size: 22px; }
+      .sh-title { font-size: 36px; }
+      #s2, #s4, #s5, #s6 { padding: 48px 44px var(--nav-h); }
+      #s3 { padding: 50px 52px var(--nav-h); }
+      .v-quote { font-size: 32px; }
+      .p-title { font-size: 19px; }
+      .p-desc  { font-size: 15px; }
+      .p-stat  { font-size: 13px; }
+      .tech-name { font-size: 17px; }
+      .tech-why  { font-size: 13px; }
+      .prog-label, .prog-label-todo { font-size: 15px; }
+    }
+
+    /* ════════════════════════════════════════
+       RESPONSIVE — Mobile (≤768px)
+    ════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* On mobile: free scroll (no snap), slides are natural height */
+      html { scroll-snap-type: none; }
+      .slide { min-height: 100svh; scroll-snap-align: none; }
+
+      /* Nav: compact */
+      .nav { padding: 8px 16px; gap: 10px; bottom: 16px; }
+      .nav-btn { width: 28px; height: 28px; font-size: 11px; }
+      .slide-count { font-size: 10px; min-width: 28px; }
+      .dot { width: 6px; height: 6px; }
+      .dot.active { width: 16px; }
+
+      :root { --nav-h: 68px; }
+
+      /* Slide 1 */
+      .t-tag    { font-size: 10px; padding: 6px 14px; letter-spacing: 1.5px; margin-bottom: 18px; }
+      .t-logo   { font-size: 72px; letter-spacing: -3px; }
+      .t-sub    { font-size: 16px; letter-spacing: 3px; margin-top: 10px; }
+      .t-line   { margin: 24px auto; }
+      .t-meta   { gap: 24px; }
+      .t-meta-val { font-size: 14px; }
+      .t-meta-lbl { font-size: 10px; }
+
+      /* Slide 2 */
+      #s2 { padding: 40px 20px var(--nav-h); }
+      .sh { margin-bottom: 20px; }
+      .sh-title { font-size: 28px; }
+      .p-grid { grid-template-columns: 1fr; gap: 14px; }
+      .p-card { padding: 22px; }
+      .p-title { font-size: 17px; }
+      .p-desc  { font-size: 14px; }
+      .p-stat  { font-size: 13px; }
+
+      /* Slide 3 */
+      #s3 { padding: 60px 24px var(--nav-h); }
+      .v-label  { font-size: 11px; margin-bottom: 16px; letter-spacing: 2px; }
+      .v-quote  { font-size: 24px; line-height: 1.6; }
+      .v-desc   { font-size: 14px; margin-top: 22px; }
+      .v-chips  { gap: 8px; margin-top: 24px; }
+      .v-chip   { font-size: 13px; padding: 8px 16px; }
+
+      /* Slide 4 */
+      #s4 { padding: 40px 20px var(--nav-h); }
+      .sc-flow { flex-direction: column; gap: 10px; }
+      .sc-step { flex-direction: row; align-items: flex-start; gap: 12px; }
+      .sc-step:not(:last-child)::after { display: none; }
+      .sc-num { margin-bottom: 0; flex-shrink: 0; width: 40px; height: 40px; font-size: 17px; }
+      .sc-card { padding: 14px 12px; }
+      .sc-title { font-size: 15px; }
+      .sc-desc  { font-size: 13px; }
+
+      /* Slide 5 */
+      #s5 { padding: 40px 20px var(--nav-h); }
+      .tech-grid { grid-template-columns: 1fr; }
+      .tech-card { padding: 14px 16px; }
+      .tech-name { font-size: 16px; }
+      .tech-why  { font-size: 12px; }
+      .tech-badge { font-size: 11px; }
+
+      /* Slide 6 */
+      #s6 { padding: 40px 20px var(--nav-h); }
+      .prog-layout { grid-template-columns: 1fr; }
+      .prog-label, .prog-label-todo { font-size: 14px; }
+      .prog-item { padding: 10px 12px; }
+      .prog-bar-title, .prog-bar-pct { font-size: 15px; }
+    }
   </style>
 </head>
 <body>
@@ -675,7 +770,7 @@
   const TOTAL = 6;
   let cur = 0;
 
-  const slides = document.querySelectorAll('.slide');
+  const slides = Array.from(document.querySelectorAll('.slide'));
   const dotsEl = document.getElementById('dots');
 
   // Build dots
@@ -687,17 +782,14 @@
   }
 
   function goTo(idx) {
-    if (idx === cur) return;
-    slides[cur].classList.remove('active');
+    if (idx < 0 || idx >= TOTAL) return;
     cur = idx;
-    slides[cur].classList.add('active');
+    slides[cur].scrollIntoView({ behavior: 'smooth', block: 'start' });
     sync();
   }
 
   function navigate(dir) {
-    const next = cur + dir;
-    if (next < 0 || next >= TOTAL) return;
-    goTo(next);
+    goTo(cur + dir);
   }
 
   function sync() {
@@ -707,9 +799,24 @@
     document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === cur));
   }
 
+  // Track active slide via scroll position
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+        const idx = slides.indexOf(entry.target);
+        if (idx !== -1 && idx !== cur) {
+          cur = idx;
+          sync();
+        }
+      }
+    });
+  }, { threshold: 0.5 });
+
+  slides.forEach(s => observer.observe(s));
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') navigate(1);
-    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                      navigate(-1);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); navigate(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); navigate(-1); }
   });
 
   sync();
