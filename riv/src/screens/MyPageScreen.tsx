@@ -183,6 +183,12 @@ function makeStyles(C: ColorScheme) {
       shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
     },
+    cardDeleteBtn: {
+      position: 'absolute', top: 8, right: 8,
+      width: 22, height: 22, borderRadius: 11,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      justifyContent: 'center', alignItems: 'center',
+    },
     cardNickname: { color: '#fff', fontSize: 14, fontWeight: '700' },
     cardNumber: { color: 'rgba(255,255,255,0.85)', fontSize: 13, letterSpacing: 1 },
     cardExpiry: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
@@ -551,21 +557,27 @@ export default function MyPageScreen() {
           <Text style={styles.sectionTitle}>결제 카드</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {cards.map((card, index) => (
-              <TouchableOpacity
+              <View
                 key={card.id}
                 style={[styles.cardItem, { backgroundColor: CARD_COLORS[index % CARD_COLORS.length] }]}
-                onLongPress={() => handleRemoveCard(card.id)}
               >
                 <Text style={styles.cardNickname}>{card.nickname}</Text>
                 <Text style={styles.cardNumber}>**** **** **** {card.number}</Text>
                 <Text style={styles.cardExpiry}>{card.expiry}</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cardDeleteBtn}
+                  onPress={() => handleRemoveCard(card.id)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={13} color="#fff" />
+                </TouchableOpacity>
+              </View>
             ))}
             <TouchableOpacity style={styles.cardAdd} onPress={openCardModal}>
               <Ionicons name="add" size={36} color={C.textHint} />
             </TouchableOpacity>
           </ScrollView>
-          <Text style={styles.cardHint}>카드를 길게 누르면 삭제됩니다</Text>
+          <Text style={styles.cardHint}>× 버튼을 눌러 카드를 삭제할 수 있습니다</Text>
         </View>
 
         {/* 최근 본 책 */}
