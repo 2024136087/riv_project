@@ -27,25 +27,28 @@ function makeStyles(C: ColorScheme) {
     hero: {
       flexDirection: 'row',
       padding: 20,
+      paddingBottom: 24,
       backgroundColor: C.card,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
     },
     cover: {
       width: 100,
       height: 142,
-      borderRadius: 8,
+      borderRadius: 10,
       backgroundColor: C.border,
     },
     heroInfo: {
       flex: 1,
       marginLeft: 16,
       justifyContent: 'flex-start',
-      paddingTop: 4,
+      paddingTop: 2,
     },
     title: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '700',
       color: C.textPrimary,
-      lineHeight: 24,
+      lineHeight: 23,
     },
     author: {
       fontSize: 14,
@@ -66,11 +69,11 @@ function makeStyles(C: ColorScheme) {
       fontSize: 18,
       fontWeight: '700',
       color: C.primary,
-      marginTop: 10,
+      marginTop: 12,
     },
     purchaseBtn: {
       marginHorizontal: 20,
-      marginTop: 16,
+      marginTop: 18,
       height: 50,
       backgroundColor: C.primary,
       borderRadius: 12,
@@ -82,17 +85,18 @@ function makeStyles(C: ColorScheme) {
     },
     purchaseBtnText: {
       color: C.white,
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
     },
     section: {
-      padding: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 20,
     },
     sectionTitle: {
       fontSize: 15,
       fontWeight: '700',
       color: C.textPrimary,
-      marginBottom: 10,
+      marginBottom: 12,
     },
     contents: {
       fontSize: 14,

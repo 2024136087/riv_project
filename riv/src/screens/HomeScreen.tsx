@@ -22,89 +22,104 @@ function makeStyles(C: ColorScheme) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    topArea: {
+      backgroundColor: C.card,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 20,
-      paddingTop: 10,
-      paddingBottom: 8,
+      paddingTop: 14,
+      paddingBottom: 10,
     },
     headerLeft: {
       flexDirection: 'row',
       alignItems: 'baseline',
+      gap: 8,
     },
     logo: {
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: '800',
       color: C.primary,
-      letterSpacing: 1,
+      letterSpacing: 0.3,
     },
     subtitle: {
       fontSize: 13,
-      color: C.textSecondary,
-      marginLeft: 8,
+      color: C.textHint,
     },
     avatar: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       backgroundColor: C.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
       color: C.primary,
     },
+
+    searchWrapper: {
+      paddingHorizontal: 20,
+      paddingBottom: 14,
+    },
     searchRow: {
       flexDirection: 'row',
-      marginHorizontal: 20,
-      marginVertical: 12,
-    },
-    searchInput: {
-      flex: 1,
-      height: 44,
-      backgroundColor: C.card,
+      alignItems: 'center',
+      backgroundColor: C.background,
       borderRadius: 10,
-      paddingHorizontal: 14,
-      fontSize: 14,
-      color: C.textPrimary,
       borderWidth: 1,
       borderColor: C.border,
+      paddingLeft: 12,
+      height: 42,
     },
+    searchIcon: { marginRight: 6 },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      color: C.textPrimary,
+      paddingVertical: 0,
+    },
+    searchClear: { padding: 6 },
     searchBtn: {
-      marginLeft: 8,
-      backgroundColor: C.primary,
-      borderRadius: 10,
+      height: 42,
       paddingHorizontal: 16,
+      backgroundColor: C.primary,
+      borderTopRightRadius: 9,
+      borderBottomRightRadius: 9,
       justifyContent: 'center',
     },
     searchBtnText: {
       color: C.white,
-      fontWeight: '600',
+      fontWeight: '700',
       fontSize: 14,
     },
+
     section: {
-      marginTop: 32,
+      marginTop: 28,
       paddingHorizontal: 20,
     },
     sectionTitle: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
       color: C.textPrimary,
-      marginBottom: 6,
+      marginBottom: 14,
     },
     genreHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 6,
+      marginBottom: 14,
     },
     genreHeaderLeft: {
       flexDirection: 'row',
-      alignItems: 'baseline',
+      alignItems: 'center',
       gap: 8,
     },
     genreTags: {
@@ -114,23 +129,23 @@ function makeStyles(C: ColorScheme) {
     },
     genreTag: {
       backgroundColor: C.primaryLight,
-      borderRadius: 12,
+      borderRadius: 10,
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
     genreTagText: {
-      fontSize: 12,
+      fontSize: 11,
       color: C.primary,
       fontWeight: '600',
     },
     genreTagMore: {
       backgroundColor: C.border,
-      borderRadius: 12,
+      borderRadius: 10,
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
     genreTagMoreText: {
-      fontSize: 12,
+      fontSize: 11,
       color: C.textSecondary,
       fontWeight: '600',
     },
@@ -244,6 +259,11 @@ export default function HomeScreen() {
     setLoading(false);
   }, [query]);
 
+  const handleClear = useCallback(() => {
+    setQuery('');
+    setSearchResults([]);
+  }, []);
+
   const handleBookPress = useCallback(
     async (book: Book) => {
       await addRecentBook(book);
@@ -263,44 +283,55 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.logo}>Riv</Text>
-            <Text style={styles.subtitle}>나만의 도서 큐레이터</Text>
+        <View style={styles.topArea}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.logo}>Riv</Text>
+              <Text style={styles.subtitle}>나만의 도서 큐레이터</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={() => navigation.navigate('Main', { screen: 'MyPage' })}
+              activeOpacity={0.7}
+            >
+              {user ? (
+                <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
+              ) : (
+                <Ionicons name="person" size={18} color={C.primary} />
+              )}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.avatar}
-            onPress={() => navigation.navigate('Main', { screen: 'MyPage' })}
-            activeOpacity={0.7}
-          >
-            {user ? (
-              <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
-            ) : (
-              <Ionicons name="person" size={20} color={C.textSecondary} />
-            )}
-          </TouchableOpacity>
-        </View>
 
-        <View style={styles.searchRow}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="책 제목, 저자, 키워드 검색"
-            placeholderTextColor={C.textHint}
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-            <Text style={styles.searchBtnText}>검색</Text>
-          </TouchableOpacity>
+          <View style={styles.searchWrapper}>
+            <View style={styles.searchRow}>
+              <Ionicons name="search" size={15} color={C.textHint} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="책 제목, 저자, 키워드 검색"
+                placeholderTextColor={C.textHint}
+                value={query}
+                onChangeText={setQuery}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+              />
+              {query.length > 0 && (
+                <TouchableOpacity style={styles.searchClear} onPress={handleClear}>
+                  <Ionicons name="close-circle" size={16} color={C.textHint} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
+                <Text style={styles.searchBtnText}>검색</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {loading && (
-          <ActivityIndicator style={{ marginVertical: 16 }} color={C.primary} />
+          <ActivityIndicator style={{ marginVertical: 20 }} color={C.primary} />
         )}
+
         {searchResults.length > 0 && (
-          <View style={styles.section}>
+          <View style={[styles.section, { marginTop: 20 }]}>
             <Text style={styles.sectionTitle}>검색 결과</Text>
             {searchResults.map(book => (
               <BookCard key={book.isbn + book.title} book={book} onPress={handleBookPress} horizontal />
@@ -310,7 +341,7 @@ export default function HomeScreen() {
 
         {searchResults.length === 0 && (
           <>
-            <View style={[styles.section, { marginTop: 16 }]}>
+            <View style={[styles.section, { marginTop: 20 }]}>
               <Text style={styles.sectionTitle}>신간 도서</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {newBooks.map(item => (
@@ -332,7 +363,7 @@ export default function HomeScreen() {
               <View style={styles.section}>
                 <View style={styles.genreHeader}>
                   <View style={styles.genreHeaderLeft}>
-                    <Text style={styles.sectionTitle}>선호장르 추천</Text>
+                    <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>선호장르 추천</Text>
                     <View style={styles.genreTags}>
                       {user.favoriteGenres.slice(0, 2).map(g => (
                         <View key={g} style={styles.genreTag}>
@@ -347,7 +378,7 @@ export default function HomeScreen() {
                     </View>
                   </View>
                   <TouchableOpacity onPress={refreshGenreBooks} activeOpacity={0.7}>
-                    <Ionicons name="refresh" size={18} color={C.textSecondary} />
+                    <Ionicons name="refresh" size={17} color={C.textSecondary} />
                   </TouchableOpacity>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -360,7 +391,7 @@ export default function HomeScreen() {
           </>
         )}
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );

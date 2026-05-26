@@ -52,8 +52,9 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: C.card,
           borderTopColor: C.border,
-          height: 60,
-          paddingBottom: 8,
+          borderTopWidth: 1,
+          height: 58,
+          paddingBottom: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,

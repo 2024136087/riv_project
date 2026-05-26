@@ -13,21 +13,21 @@ interface Props {
 function makeStyles(C: ColorScheme) {
   return StyleSheet.create({
     card: {
-      width: 120,
+      width: 116,
       marginRight: 12,
       backgroundColor: C.card,
-      borderRadius: 10,
+      borderRadius: 12,
       padding: 8,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.07,
+      shadowRadius: 8,
+      elevation: 3,
     },
     image: {
-      width: 104,
-      height: 148,
-      borderRadius: 6,
+      width: 100,
+      height: 142,
+      borderRadius: 8,
       backgroundColor: C.border,
     },
     title: {
@@ -35,45 +35,46 @@ function makeStyles(C: ColorScheme) {
       fontWeight: '600',
       color: C.textPrimary,
       marginTop: 8,
+      lineHeight: 17,
     },
     author: {
       fontSize: 11,
       color: C.textSecondary,
-      marginTop: 2,
+      marginTop: 3,
     },
     horizontalCard: {
       flexDirection: 'row',
       backgroundColor: C.card,
-      borderRadius: 10,
-      padding: 12,
+      borderRadius: 12,
+      padding: 14,
       marginBottom: 10,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
-      shadowRadius: 4,
+      shadowRadius: 8,
       elevation: 2,
     },
     horizontalImage: {
-      width: 64,
-      height: 90,
-      borderRadius: 6,
+      width: 62,
+      height: 88,
+      borderRadius: 8,
       backgroundColor: C.border,
     },
     horizontalInfo: {
       flex: 1,
-      marginLeft: 12,
+      marginLeft: 14,
       justifyContent: 'center',
     },
     publisher: {
       fontSize: 11,
       color: C.textHint,
-      marginTop: 2,
+      marginTop: 3,
     },
     price: {
       fontSize: 13,
       fontWeight: '700',
       color: C.primary,
-      marginTop: 6,
+      marginTop: 8,
     },
   });
 }
@@ -84,7 +85,7 @@ export default function BookCard({ book, onPress, horizontal }: Props) {
 
   if (horizontal) {
     return (
-      <TouchableOpacity style={styles.horizontalCard} onPress={() => onPress(book)}>
+      <TouchableOpacity style={styles.horizontalCard} onPress={() => onPress(book)} activeOpacity={0.7}>
         <Image
           source={{ uri: book.thumbnail || 'https://via.placeholder.com/80x110' }}
           style={styles.horizontalImage}
@@ -103,7 +104,7 @@ export default function BookCard({ book, onPress, horizontal }: Props) {
   }
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(book)}>
+    <TouchableOpacity style={styles.card} onPress={() => onPress(book)} activeOpacity={0.7}>
       <Image
         source={{ uri: book.thumbnail || 'https://via.placeholder.com/80x110' }}
         style={styles.image}
