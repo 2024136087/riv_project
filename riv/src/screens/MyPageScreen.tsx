@@ -178,20 +178,22 @@ function makeStyles(C: ColorScheme) {
     chargeBtnText: { color: C.primary, fontWeight: '700', fontSize: 14 },
 
     cardItem: {
-      width: 200, height: 118, borderRadius: 14, padding: 18,
-      marginRight: 12, justifyContent: 'space-between',
+      width: 200, height: 118, borderRadius: 14, padding: 16,
+      marginRight: 12,
       shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
     },
+    cardTop: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    },
     cardDeleteBtn: {
-      position: 'absolute', top: 8, right: 8,
       width: 22, height: 22, borderRadius: 11,
       backgroundColor: 'rgba(0,0,0,0.3)',
       justifyContent: 'center', alignItems: 'center',
     },
-    cardNickname: { color: '#fff', fontSize: 14, fontWeight: '700' },
-    cardNumber: { color: 'rgba(255,255,255,0.85)', fontSize: 13, letterSpacing: 1 },
-    cardExpiry: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+    cardNickname: { color: '#fff', fontSize: 14, fontWeight: '700', flex: 1 },
+    cardNumber: { color: 'rgba(255,255,255,0.85)', fontSize: 13, letterSpacing: 1, marginTop: 16 },
+    cardExpiry: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
     cardAdd: {
       width: 200, height: 118, borderRadius: 14,
       backgroundColor: C.background,
@@ -561,16 +563,17 @@ export default function MyPageScreen() {
                 key={card.id}
                 style={[styles.cardItem, { backgroundColor: CARD_COLORS[index % CARD_COLORS.length] }]}
               >
-                <Text style={styles.cardNickname}>{card.nickname}</Text>
+                <View style={styles.cardTop}>
+                  <Text style={styles.cardNickname} numberOfLines={1}>{card.nickname}</Text>
+                  <TouchableOpacity
+                    style={styles.cardDeleteBtn}
+                    onPress={() => handleRemoveCard(card.id)}
+                  >
+                    <Ionicons name="close" size={13} color="#fff" />
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.cardNumber}>**** **** **** {card.number}</Text>
                 <Text style={styles.cardExpiry}>{card.expiry}</Text>
-                <TouchableOpacity
-                  style={styles.cardDeleteBtn}
-                  onPress={() => handleRemoveCard(card.id)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="close" size={13} color="#fff" />
-                </TouchableOpacity>
               </View>
             ))}
             <TouchableOpacity style={styles.cardAdd} onPress={openCardModal}>
