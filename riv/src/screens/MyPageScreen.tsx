@@ -2,13 +2,14 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Alert, SafeAreaView, FlatList, Modal, KeyboardAvoidingView, Platform,
-  Animated, Switch,
+  Animated,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import BookCard from '../components/BookCard';
-import { Colors } from '../constants/colors';
+import { ColorScheme } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 import { GENRES } from '../constants/genres';
 import {
   getUser, saveUser, removeUser,
@@ -24,8 +25,222 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 const CARD_COLORS = ['#4F6EF7', '#2EC4B6', '#E63946', '#F4A261', '#6A0572'];
 const CHARGE_PRESETS = [1000, 3000, 5000, 10000, 30000, 50000];
 
+const toggleStyles = StyleSheet.create({
+  track: {
+    width: 56,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+  },
+  thumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+});
+
+function ThemeToggle() {
+  const { isDark, toggleTheme } = useTheme();
+  const anim = useRef(new Animated.Value(isDark ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: isDark ? 1 : 0,
+      useNativeDriver: false,
+      speed: 20,
+      bounciness: 8,
+    }).start();
+  }, [isDark, anim]);
+
+  const thumbX = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [3, 29],
+  });
+
+  const trackBg = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#E5E7EB', '#6B8AFF'],
+  });
+
+  return (
+    <TouchableOpacity onPress={toggleTheme} activeOpacity={0.9}>
+      <Animated.View style={[toggleStyles.track, { backgroundColor: trackBg }]}>
+        <Animated.View style={[toggleStyles.thumb, { transform: [{ translateX: thumbX }] }]}>
+          <Ionicons
+            name={isDark ? 'moon' : 'sunny'}
+            size={14}
+            color={isDark ? '#6B8AFF' : '#F59E0B'}
+          />
+        </Animated.View>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+function makeStyles(C: ColorScheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.background },
+
+    profileSection: {
+      backgroundColor: C.card, margin: 16, marginBottom: 24, borderRadius: 14,
+      padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    },
+    profileInfo: { flexDirection: 'row', alignItems: 'center' },
+    profileAvatar: {
+      width: 52, height: 52, borderRadius: 26,
+      backgroundColor: C.primary, justifyContent: 'center', alignItems: 'center', marginRight: 12,
+    },
+    profileAvatarText: { color: C.white, fontSize: 22, fontWeight: '700' },
+    profileName: { fontSize: 17, fontWeight: '700', color: C.textPrimary },
+    profileEmail: { fontSize: 13, color: C.textSecondary, marginTop: 2 },
+    genreSection: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: C.border },
+    genreHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    genreTitle: { fontSize: 13, fontWeight: '700', color: C.textSecondary },
+    genreEditBtn: { fontSize: 13, fontWeight: '600', color: C.primary },
+    genreTagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    genreTag: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderRadius: 20, borderWidth: 1.5, borderColor: C.border,
+      backgroundColor: C.background,
+    },
+    genreTagActive: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderRadius: 20, backgroundColor: C.primary,
+    },
+    genreTagText: { fontSize: 13, color: C.textSecondary, fontWeight: '500' },
+    genreTagTextActive: { fontSize: 13, color: C.white, fontWeight: '700' },
+    genreEmpty: { fontSize: 13, color: C.textHint, fontStyle: 'italic' },
+    logoutBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: C.border },
+    logoutBtnText: { fontSize: 13, color: C.textSecondary },
+    loginTitle: { fontSize: 16, fontWeight: '700', color: C.textPrimary, marginBottom: 12 },
+    loginInput: {
+      height: 44, borderWidth: 1, borderColor: C.border, borderRadius: 10,
+      paddingHorizontal: 12, fontSize: 14, color: C.textPrimary,
+      marginBottom: 10, backgroundColor: C.background,
+    },
+    loginBtnRow: { flexDirection: 'row', gap: 10 },
+    loginBtn: {
+      flex: 1, height: 44, backgroundColor: C.primary,
+      borderRadius: 10, justifyContent: 'center', alignItems: 'center',
+    },
+    loginBtnText: { color: C.white, fontWeight: '700', fontSize: 15 },
+    loginPrompt: { alignItems: 'center', paddingVertical: 8 },
+    loginPromptText: { fontSize: 14, color: C.textSecondary, marginBottom: 12 },
+    loginStartBtn: { backgroundColor: C.primary, paddingHorizontal: 32, paddingVertical: 10, borderRadius: 10 },
+    loginStartBtnText: { color: C.white, fontWeight: '700', fontSize: 15 },
+
+    settingsBox: {
+      backgroundColor: C.card, borderRadius: 14,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+      overflow: 'hidden',
+    },
+    settingsRow: {
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 14,
+    },
+    settingsLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    settingsLabel: { fontSize: 15, color: C.textPrimary, fontWeight: '500' },
+    settingsDivider: { height: 1, backgroundColor: C.border, marginHorizontal: 16 },
+
+    section: { paddingHorizontal: 16, marginBottom: 24 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: C.textPrimary, marginBottom: 12 },
+    sectionCount: { fontSize: 13, color: C.textSecondary },
+    emptyText: { fontSize: 13, color: C.textHint, marginBottom: 16 },
+
+    cashBox: {
+      backgroundColor: C.card, borderRadius: 14, padding: 16,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    },
+    cashLeft: { flexDirection: 'row', alignItems: 'center' },
+    cashLabel: { fontSize: 12, color: C.textSecondary },
+    cashAmount: { fontSize: 22, fontWeight: '800', color: C.primary, marginTop: 2 },
+    chargeBtn: {
+      backgroundColor: C.primaryLight, paddingHorizontal: 16,
+      paddingVertical: 8, borderRadius: 20,
+    },
+    chargeBtnText: { color: C.primary, fontWeight: '700', fontSize: 14 },
+
+    cardItem: {
+      width: 200, height: 120, borderRadius: 16, padding: 18,
+      marginRight: 12, justifyContent: 'space-between',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+    },
+    cardNickname: { color: '#fff', fontSize: 14, fontWeight: '700' },
+    cardNumber: { color: 'rgba(255,255,255,0.85)', fontSize: 13, letterSpacing: 1 },
+    cardExpiry: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+    cardAdd: {
+      width: 200, height: 120, borderRadius: 16,
+      backgroundColor: C.background,
+      borderWidth: 2, borderColor: C.border, borderStyle: 'dashed',
+      justifyContent: 'center', alignItems: 'center', marginRight: 12,
+    },
+    cardHint: { fontSize: 11, color: C.textHint, marginTop: 8 },
+
+    presetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    presetBtn: {
+      width: '30%', paddingVertical: 12, borderRadius: 10,
+      borderWidth: 1.5, borderColor: C.border,
+      alignItems: 'center', backgroundColor: C.background,
+    },
+    presetBtnActive: { borderColor: C.primary, backgroundColor: C.primaryLight },
+    presetText: { fontSize: 14, fontWeight: '600', color: C.textSecondary },
+    presetTextActive: { color: C.primary },
+    customInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    customUnit: { fontSize: 16, fontWeight: '700', color: C.textSecondary },
+    chargeSummary: {
+      marginTop: 14, padding: 12, backgroundColor: C.primaryLight,
+      borderRadius: 10, alignItems: 'center',
+    },
+    chargeSummaryText: { fontSize: 14, color: C.textSecondary },
+    chargeSummaryAmount: { fontWeight: '800', color: C.primary, fontSize: 16 },
+
+    modalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    modalContainer: { flex: 1, justifyContent: 'flex-end' },
+    modalSheet: {
+      backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 36,
+    },
+    modalHandle: {
+      width: 40, height: 4, backgroundColor: C.border,
+      borderRadius: 2, alignSelf: 'center', marginBottom: 20,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '800', color: C.textPrimary, marginBottom: 20 },
+    inputLabel: { fontSize: 13, fontWeight: '600', color: C.textSecondary, marginBottom: 6 },
+    modalInput: {
+      height: 48, borderWidth: 1, borderColor: C.border, borderRadius: 10,
+      paddingHorizontal: 14, fontSize: 15, color: C.textPrimary,
+      marginBottom: 16, backgroundColor: C.background,
+    },
+    modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    modalBtn: { flex: 1, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  });
+}
+
 export default function MyPageScreen() {
   const navigation = useNavigation<Nav>();
+  const { colors: C, isDark, toggleTheme } = useTheme();
+  const styles = makeStyles(C);
+
   const [user, setUser] = useState<User | null>(null);
   const [recentBooks, setRecentBooks] = useState<Book[]>([]);
   const [purchasedBooks, setPurchasedBooks] = useState<Book[]>([]);
@@ -36,22 +251,18 @@ export default function MyPageScreen() {
   const [loginEmail, setLoginEmail] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [editingGenres, setEditingGenres] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
 
-  // 충전 모달
   const [chargeModalVisible, setChargeModalVisible] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
 
-  // 카드 등록 모달
   const [cardModalVisible, setCardModalVisible] = useState(false);
   const [cardNickname, setCardNickname] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
 
-  // 모달 애니메이션
   const chargeBackdrop = useRef(new Animated.Value(0)).current;
   const chargeSheet = useRef(new Animated.Value(500)).current;
   const cardBackdrop = useRef(new Animated.Value(0)).current;
@@ -90,24 +301,17 @@ export default function MyPageScreen() {
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [u, rb, pb, c, cds, dm] = await Promise.all([
+        const [u, rb, pb, c, cds] = await Promise.all([
           getUser(), getRecentBooks(), getPurchasedBooks(), getCash(), getCards(),
-          AsyncStorage.getItem('riv_dark_mode'),
         ]);
         setUser(u);
         setRecentBooks(rb);
         setPurchasedBooks(pb);
         setCashState(c);
         setCards(cds);
-        setDarkMode(dm === 'true');
       })();
     }, [])
   );
-
-  const handleDarkModeToggle = useCallback(async (value: boolean) => {
-    setDarkMode(value);
-    await AsyncStorage.setItem('riv_dark_mode', String(value));
-  }, []);
 
   const handleLogin = useCallback(async () => {
     if (!loginName.trim() || !loginEmail.trim()) {
@@ -180,13 +384,11 @@ export default function MyPageScreen() {
     navigation.navigate('BookDetail', { book });
   }, [navigation]);
 
-  // 카드 번호 자동 포맷 (4자리마다 공백)
   const formatCardNumber = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 16);
     return digits.replace(/(.{4})/g, '$1 ').trim();
   };
 
-  // 유효기간 자동 포맷 MM/YY
   const formatExpiry = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 4);
     if (digits.length >= 3) return digits.slice(0, 2) + '/' + digits.slice(2);
@@ -259,7 +461,6 @@ export default function MyPageScreen() {
                 <Text style={styles.logoutBtnText}>로그아웃</Text>
               </TouchableOpacity>
             </View>
-            {/* 장르 태그 */}
             <View style={styles.genreSection}>
               <View style={styles.genreHeader}>
                 <Text style={styles.genreTitle}>선호 장르</Text>
@@ -269,7 +470,6 @@ export default function MyPageScreen() {
               </View>
 
               {editingGenres ? (
-                // 편집 모드: 전체 장르 표시
                 <View style={styles.genreTagsWrap}>
                   {GENRES.map(g => {
                     const active = user.favoriteGenres.includes(g.label);
@@ -279,7 +479,7 @@ export default function MyPageScreen() {
                         style={[styles.genreTag, active && styles.genreTagActive]}
                         onPress={() => handleToggleGenre(g.label)}
                       >
-                        {active && <Ionicons name="checkmark" size={12} color={Colors.white} style={{ marginRight: 3 }} />}
+                        {active && <Ionicons name="checkmark" size={12} color={C.white} style={{ marginRight: 3 }} />}
                         <Text style={[styles.genreTagText, active && styles.genreTagTextActive]}>
                           {g.label}
                         </Text>
@@ -288,7 +488,6 @@ export default function MyPageScreen() {
                   })}
                 </View>
               ) : (
-                // 보기 모드: 선택된 장르만 표시
                 <View style={styles.genreTagsWrap}>
                   {user.favoriteGenres.length === 0 ? (
                     <TouchableOpacity onPress={() => setEditingGenres(true)}>
@@ -308,11 +507,11 @@ export default function MyPageScreen() {
           ) : showLogin ? (
             <View>
               <Text style={styles.loginTitle}>로그인</Text>
-              <TextInput style={styles.loginInput} placeholder="이름" placeholderTextColor={Colors.textHint} value={loginName} onChangeText={setLoginName} />
-              <TextInput style={styles.loginInput} placeholder="이메일" placeholderTextColor={Colors.textHint} value={loginEmail} onChangeText={setLoginEmail} keyboardType="email-address" autoCapitalize="none" />
+              <TextInput style={styles.loginInput} placeholder="이름" placeholderTextColor={C.textHint} value={loginName} onChangeText={setLoginName} />
+              <TextInput style={styles.loginInput} placeholder="이메일" placeholderTextColor={C.textHint} value={loginEmail} onChangeText={setLoginEmail} keyboardType="email-address" autoCapitalize="none" />
               <View style={styles.loginBtnRow}>
-                <TouchableOpacity style={[styles.loginBtn, { backgroundColor: Colors.border }]} onPress={() => setShowLogin(false)}>
-                  <Text style={{ color: Colors.textSecondary, fontWeight: '600' }}>취소</Text>
+                <TouchableOpacity style={[styles.loginBtn, { backgroundColor: C.border }]} onPress={() => setShowLogin(false)}>
+                  <Text style={{ color: C.textSecondary, fontWeight: '600' }}>취소</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
                   <Text style={styles.loginBtnText}>로그인</Text>
@@ -334,7 +533,7 @@ export default function MyPageScreen() {
           <Text style={styles.sectionTitle}>보유 캐시</Text>
           <View style={styles.cashBox}>
             <View style={styles.cashLeft}>
-              <Ionicons name="wallet-outline" size={28} color={Colors.primary} />
+              <Ionicons name="wallet-outline" size={28} color={C.primary} />
               <View style={{ marginLeft: 14 }}>
                 <Text style={styles.cashLabel}>사용 가능 캐시</Text>
                 <Text style={styles.cashAmount}>{cash.toLocaleString()} C</Text>
@@ -350,7 +549,6 @@ export default function MyPageScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>결제 카드</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {/* 등록된 카드들 */}
             {cards.map((card, index) => (
               <TouchableOpacity
                 key={card.id}
@@ -362,10 +560,8 @@ export default function MyPageScreen() {
                 <Text style={styles.cardExpiry}>{card.expiry}</Text>
               </TouchableOpacity>
             ))}
-
-            {/* 카드 추가 버튼 */}
             <TouchableOpacity style={styles.cardAdd} onPress={openCardModal}>
-              <Ionicons name="add" size={36} color={Colors.textHint} />
+              <Ionicons name="add" size={36} color={C.textHint} />
             </TouchableOpacity>
           </ScrollView>
           <Text style={styles.cardHint}>카드를 길게 누르면 삭제됩니다</Text>
@@ -415,25 +611,20 @@ export default function MyPageScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.settingsLeft}>
-                <Ionicons name="person-outline" size={20} color={Colors.textPrimary} />
+                <Ionicons name="person-outline" size={20} color={C.textPrimary} />
                 <Text style={styles.settingsLabel}>프로필 설정</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textHint} />
+              <Ionicons name="chevron-forward" size={18} color={C.textHint} />
             </TouchableOpacity>
 
             <View style={styles.settingsDivider} />
 
             <View style={styles.settingsRow}>
               <View style={styles.settingsLeft}>
-                <Ionicons name={darkMode ? 'moon-outline' : 'sunny-outline'} size={20} color={Colors.textPrimary} />
-                <Text style={styles.settingsLabel}>{darkMode ? '화이트 모드' : '블랙 모드'}</Text>
+                <Ionicons name={isDark ? 'moon-outline' : 'sunny-outline'} size={20} color={C.textPrimary} />
+                <Text style={styles.settingsLabel}>{isDark ? '화이트 모드로 전환' : '블랙 모드로 전환'}</Text>
               </View>
-              <Switch
-                value={darkMode}
-                onValueChange={handleDarkModeToggle}
-                trackColor={{ false: Colors.border, true: Colors.primary }}
-                thumbColor={Colors.white}
-              />
+              <ThemeToggle />
             </View>
           </View>
         </View>
@@ -444,30 +635,30 @@ export default function MyPageScreen() {
           <View style={styles.settingsBox}>
             <TouchableOpacity style={styles.settingsRow} onPress={handlePasswordChange} activeOpacity={0.7}>
               <View style={styles.settingsLeft}>
-                <Ionicons name="lock-closed-outline" size={20} color={Colors.textPrimary} />
+                <Ionicons name="lock-closed-outline" size={20} color={C.textPrimary} />
                 <Text style={styles.settingsLabel}>비밀번호 변경</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textHint} />
+              <Ionicons name="chevron-forward" size={18} color={C.textHint} />
             </TouchableOpacity>
 
             <View style={styles.settingsDivider} />
 
             <TouchableOpacity style={styles.settingsRow} onPress={handleLogout} activeOpacity={0.7}>
               <View style={styles.settingsLeft}>
-                <Ionicons name="log-out-outline" size={20} color={Colors.textPrimary} />
+                <Ionicons name="log-out-outline" size={20} color={C.textPrimary} />
                 <Text style={styles.settingsLabel}>로그아웃</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textHint} />
+              <Ionicons name="chevron-forward" size={18} color={C.textHint} />
             </TouchableOpacity>
 
             <View style={styles.settingsDivider} />
 
             <TouchableOpacity style={styles.settingsRow} onPress={handleDeleteAccount} activeOpacity={0.7}>
               <View style={styles.settingsLeft}>
-                <Ionicons name="trash-outline" size={20} color={Colors.error} />
-                <Text style={[styles.settingsLabel, { color: Colors.error }]}>회원 탈퇴</Text>
+                <Ionicons name="trash-outline" size={20} color={C.error} />
+                <Text style={[styles.settingsLabel, { color: C.error }]}>회원 탈퇴</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textHint} />
+              <Ionicons name="chevron-forward" size={18} color={C.textHint} />
             </TouchableOpacity>
           </View>
         </View>
@@ -507,7 +698,7 @@ export default function MyPageScreen() {
               <TextInput
                 style={[styles.modalInput, { flex: 1, marginBottom: 0 }]}
                 placeholder="금액 입력"
-                placeholderTextColor={Colors.textHint}
+                placeholderTextColor={C.textHint}
                 value={customAmount}
                 onChangeText={v => {
                   setCustomAmount(v.replace(/[^0-9]/g, ''));
@@ -528,13 +719,13 @@ export default function MyPageScreen() {
 
             <View style={[styles.modalBtnRow, { marginTop: 20 }]}>
               <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: Colors.border }]}
+                style={[styles.modalBtn, { backgroundColor: C.border }]}
                 onPress={() => { closeChargeModal(); setSelectedPreset(null); setCustomAmount(''); }}
               >
-                <Text style={{ color: Colors.textSecondary, fontWeight: '600' }}>취소</Text>
+                <Text style={{ color: C.textSecondary, fontWeight: '600' }}>취소</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Colors.primary }]} onPress={handleCharge}>
-                <Text style={{ color: Colors.white, fontWeight: '700' }}>충전하기</Text>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: C.primary }]} onPress={handleCharge}>
+                <Text style={{ color: C.white, fontWeight: '700' }}>충전하기</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -557,7 +748,7 @@ export default function MyPageScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="예: 신한카드, 내 체크카드"
-              placeholderTextColor={Colors.textHint}
+              placeholderTextColor={C.textHint}
               value={cardNickname}
               onChangeText={setCardNickname}
             />
@@ -566,7 +757,7 @@ export default function MyPageScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="0000 0000 0000 0000"
-              placeholderTextColor={Colors.textHint}
+              placeholderTextColor={C.textHint}
               value={cardNumber}
               onChangeText={v => setCardNumber(formatCardNumber(v))}
               keyboardType="numeric"
@@ -577,7 +768,7 @@ export default function MyPageScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="MM/YY"
-              placeholderTextColor={Colors.textHint}
+              placeholderTextColor={C.textHint}
               value={cardExpiry}
               onChangeText={v => setCardExpiry(formatExpiry(v))}
               keyboardType="numeric"
@@ -586,16 +777,16 @@ export default function MyPageScreen() {
 
             <View style={styles.modalBtnRow}>
               <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: Colors.border }]}
+                style={[styles.modalBtn, { backgroundColor: C.border }]}
                 onPress={() => {
                   closeCardModal();
                   setCardNickname(''); setCardNumber(''); setCardExpiry('');
                 }}
               >
-                <Text style={{ color: Colors.textSecondary, fontWeight: '600' }}>취소</Text>
+                <Text style={{ color: C.textSecondary, fontWeight: '600' }}>취소</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Colors.primary }]} onPress={handleAddCard}>
-                <Text style={{ color: Colors.white, fontWeight: '700' }}>등록</Text>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: C.primary }]} onPress={handleAddCard}>
+                <Text style={{ color: C.white, fontWeight: '700' }}>등록</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -604,168 +795,3 @@ export default function MyPageScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-
-  // 프로필
-  profileSection: {
-    backgroundColor: Colors.card, margin: 16, marginBottom: 24, borderRadius: 14,
-    padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-  },
-  profileInfo: { flexDirection: 'row', alignItems: 'center' },
-  profileAvatar: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: 12,
-  },
-  profileAvatarText: { color: Colors.white, fontSize: 22, fontWeight: '700' },
-  profileName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  profileEmail: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  genreSection: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.border },
-  genreHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  genreTitle: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
-  genreEditBtn: { fontSize: 13, fontWeight: '600', color: Colors.primary },
-  genreTagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  genreTag: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  genreTagActive: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, backgroundColor: Colors.primary,
-  },
-  genreTagText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
-  genreTagTextActive: { fontSize: 13, color: Colors.white, fontWeight: '700' },
-  genreEmpty: { fontSize: 13, color: Colors.textHint, fontStyle: 'italic' },
-  logoutBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: Colors.border },
-  logoutBtnText: { fontSize: 13, color: Colors.textSecondary },
-  loginTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
-  loginInput: {
-    height: 44, borderWidth: 1, borderColor: Colors.border, borderRadius: 10,
-    paddingHorizontal: 12, fontSize: 14, color: Colors.textPrimary,
-    marginBottom: 10, backgroundColor: Colors.background,
-  },
-  loginBtnRow: { flexDirection: 'row', gap: 10 },
-  loginBtn: {
-    flex: 1, height: 44, backgroundColor: Colors.primary,
-    borderRadius: 10, justifyContent: 'center', alignItems: 'center',
-  },
-  loginBtnText: { color: Colors.white, fontWeight: '700', fontSize: 15 },
-  loginPrompt: { alignItems: 'center', paddingVertical: 8 },
-  loginPromptText: { fontSize: 14, color: Colors.textSecondary, marginBottom: 12 },
-  loginStartBtn: { backgroundColor: Colors.primary, paddingHorizontal: 32, paddingVertical: 10, borderRadius: 10 },
-  loginStartBtnText: { color: Colors.white, fontWeight: '700', fontSize: 15 },
-
-  // 설정
-  settingsBox: {
-    backgroundColor: Colors.card, borderRadius: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-    overflow: 'hidden',
-  },
-  settingsRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
-  settingsLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  settingsLabel: { fontSize: 15, color: Colors.textPrimary, fontWeight: '500' },
-  settingsDivider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 16 },
-
-  // 공통 섹션
-  section: { paddingHorizontal: 16, marginBottom: 24 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
-  sectionCount: { fontSize: 13, color: Colors.textSecondary },
-  emptyText: { fontSize: 13, color: Colors.textHint, marginBottom: 16 },
-
-  // 캐시
-  cashBox: {
-    backgroundColor: Colors.card, borderRadius: 14, padding: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-  },
-  cashLeft: { flexDirection: 'row', alignItems: 'center' },
-  cashLabel: { fontSize: 12, color: Colors.textSecondary },
-  cashAmount: { fontSize: 22, fontWeight: '800', color: Colors.primary, marginTop: 2 },
-  chargeBtn: {
-    backgroundColor: Colors.primaryLight, paddingHorizontal: 16,
-    paddingVertical: 8, borderRadius: 20,
-  },
-  chargeBtnText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
-
-  // 카드
-  cardItem: {
-    width: 200, height: 120, borderRadius: 16, padding: 18,
-    marginRight: 12, justifyContent: 'space-between',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
-  },
-  cardNickname: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  cardNumber: { color: 'rgba(255,255,255,0.85)', fontSize: 13, letterSpacing: 1 },
-  cardExpiry: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
-  cardAdd: {
-    width: 200, height: 120, borderRadius: 16,
-    backgroundColor: '#F1F3F5',
-    borderWidth: 2, borderColor: Colors.border, borderStyle: 'dashed',
-    justifyContent: 'center', alignItems: 'center', marginRight: 12,
-  },
-  cardHint: { fontSize: 11, color: Colors.textHint, marginTop: 8 },
-
-  // 충전 프리셋
-  presetGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
-  },
-  presetBtn: {
-    width: '30%', paddingVertical: 12, borderRadius: 10,
-    borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', backgroundColor: Colors.background,
-  },
-  presetBtnActive: {
-    borderColor: Colors.primary, backgroundColor: Colors.primaryLight,
-  },
-  presetText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  presetTextActive: { color: Colors.primary },
-  customInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  customUnit: { fontSize: 16, fontWeight: '700', color: Colors.textSecondary },
-  chargeSummary: {
-    marginTop: 14, padding: 12, backgroundColor: Colors.primaryLight,
-    borderRadius: 10, alignItems: 'center',
-  },
-  chargeSummaryText: { fontSize: 14, color: Colors.textSecondary },
-  chargeSummaryAmount: { fontWeight: '800', color: Colors.primary, fontSize: 16 },
-
-  // 모달
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  modalContainer: {
-    flex: 1, justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 36,
-  },
-  modalHandle: {
-    width: 40, height: 4, backgroundColor: Colors.border,
-    borderRadius: 2, alignSelf: 'center', marginBottom: 20,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 20 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
-  modalInput: {
-    height: 48, borderWidth: 1, borderColor: Colors.border, borderRadius: 10,
-    paddingHorizontal: 14, fontSize: 15, color: Colors.textPrimary,
-    marginBottom: 16, backgroundColor: Colors.background,
-  },
-  modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  modalBtn: {
-    flex: 1, height: 50, borderRadius: 12,
-    justifyContent: 'center', alignItems: 'center',
-  },
-});

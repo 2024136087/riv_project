@@ -4,7 +4,8 @@ import {
   TouchableOpacity, Alert, SafeAreaView,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { Colors } from '../constants/colors';
+import { ColorScheme } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 import {
   isPurchased, addPurchasedBook, removePurchasedBook,
 } from '../services/storage';
@@ -19,10 +20,94 @@ import { addRecentBook } from '../services/storage';
 type Route = RouteProp<RootStackParamList, 'BookDetail'>;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+function makeStyles(C: ColorScheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.background },
+    scroll: { flex: 1 },
+    hero: {
+      flexDirection: 'row',
+      padding: 20,
+      backgroundColor: C.card,
+    },
+    cover: {
+      width: 100,
+      height: 142,
+      borderRadius: 8,
+      backgroundColor: C.border,
+    },
+    heroInfo: {
+      flex: 1,
+      marginLeft: 16,
+      justifyContent: 'flex-start',
+      paddingTop: 4,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: C.textPrimary,
+      lineHeight: 24,
+    },
+    author: {
+      fontSize: 14,
+      color: C.textSecondary,
+      marginTop: 6,
+    },
+    publisher: {
+      fontSize: 12,
+      color: C.textHint,
+      marginTop: 4,
+    },
+    date: {
+      fontSize: 12,
+      color: C.textHint,
+      marginTop: 2,
+    },
+    price: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: C.primary,
+      marginTop: 10,
+    },
+    purchaseBtn: {
+      marginHorizontal: 20,
+      marginTop: 16,
+      height: 50,
+      backgroundColor: C.primary,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    purchasedBtn: {
+      backgroundColor: C.border,
+    },
+    purchaseBtnText: {
+      color: C.white,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    section: {
+      padding: 20,
+    },
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: C.textPrimary,
+      marginBottom: 10,
+    },
+    contents: {
+      fontSize: 14,
+      lineHeight: 22,
+      color: C.textSecondary,
+    },
+  });
+}
+
 export default function BookDetailScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
   const { book } = route.params;
+  const { colors: C } = useTheme();
+  const styles = makeStyles(C);
 
   const [purchased, setPurchased] = useState(false);
   const [related, setRelated] = useState<Book[]>([]);
@@ -99,7 +184,6 @@ export default function BookDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* 책 상단 정보 */}
         <View style={styles.hero}>
           <Image
             source={{ uri: book.thumbnail || 'https://via.placeholder.com/120x170' }}
@@ -122,7 +206,6 @@ export default function BookDetailScreen() {
           </View>
         </View>
 
-        {/* 구매 버튼 */}
         <TouchableOpacity
           style={[styles.purchaseBtn, purchased && styles.purchasedBtn]}
           onPress={handlePurchaseToggle}
@@ -132,7 +215,6 @@ export default function BookDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* 책 소개 */}
         {book.contents ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>책 소개</Text>
@@ -140,7 +222,6 @@ export default function BookDetailScreen() {
           </View>
         ) : null}
 
-        {/* 연관 도서 */}
         {related.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>함께 읽기 좋은 책</Text>
@@ -158,83 +239,3 @@ export default function BookDetailScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { flex: 1 },
-  hero: {
-    flexDirection: 'row',
-    padding: 20,
-    backgroundColor: Colors.card,
-  },
-  cover: {
-    width: 100,
-    height: 142,
-    borderRadius: 8,
-    backgroundColor: Colors.border,
-  },
-  heroInfo: {
-    flex: 1,
-    marginLeft: 16,
-    justifyContent: 'flex-start',
-    paddingTop: 4,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    lineHeight: 24,
-  },
-  author: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 6,
-  },
-  publisher: {
-    fontSize: 12,
-    color: Colors.textHint,
-    marginTop: 4,
-  },
-  date: {
-    fontSize: 12,
-    color: Colors.textHint,
-    marginTop: 2,
-  },
-  price: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginTop: 10,
-  },
-  purchaseBtn: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    height: 50,
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  purchasedBtn: {
-    backgroundColor: Colors.border,
-  },
-  purchaseBtnText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  section: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 10,
-  },
-  contents: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: Colors.textSecondary,
-  },
-});

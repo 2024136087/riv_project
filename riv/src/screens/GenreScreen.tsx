@@ -7,7 +7,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import BookCard from '../components/BookCard';
-import { Colors } from '../constants/colors';
+import { ColorScheme } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 import { GENRES } from '../constants/genres';
 import { getBooksByGenre, searchBooksInGenre } from '../services/bookApi';
 import { addRecentBook } from '../services/storage';
@@ -20,8 +21,120 @@ const TAB_HEIGHT = 94;
 const SEARCH_BAR_HEIGHT = 56;
 const HEADER_HEIGHT = TAB_HEIGHT + SEARCH_BAR_HEIGHT;
 
+function makeStyles(C: ColorScheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: HEADER_HEIGHT },
+
+    searchWrapper: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: C.card,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: 12,
+      marginTop: 10,
+      marginBottom: 10,
+      paddingHorizontal: 12,
+      height: 36,
+      backgroundColor: C.background,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    searchIcon: { marginRight: 6 },
+    searchInput: {
+      flex: 1,
+      fontSize: 13,
+      color: C.textPrimary,
+      paddingVertical: 0,
+    },
+
+    tabGridWrapper: {
+      position: 'absolute',
+      top: SEARCH_BAR_HEIGHT,
+      left: 0,
+      right: 0,
+      zIndex: 10,
+      backgroundColor: C.card,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    tabGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 8,
+      height: TAB_HEIGHT,
+    },
+    tab: {
+      width: '18%',
+      paddingVertical: 7,
+      borderRadius: 20,
+      backgroundColor: C.background,
+      alignItems: 'center',
+    },
+    tabActive: { backgroundColor: C.primary },
+    tabText: { fontSize: 13, color: C.textSecondary, fontWeight: '500' },
+    tabTextActive: { color: C.white, fontWeight: '700' },
+
+    expandBtn: {
+      position: 'absolute',
+      top: SEARCH_BAR_HEIGHT + 6,
+      left: 0,
+      right: 0,
+      zIndex: 15,
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+
+    list: {
+      paddingTop: HEADER_HEIGHT + 8,
+      paddingHorizontal: 16,
+      paddingBottom: 24,
+    },
+    empty: {
+      textAlign: 'center',
+      color: C.textHint,
+      marginTop: 40,
+    },
+    topBtn: {
+      position: 'absolute',
+      bottom: 24,
+      right: 20,
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+    },
+    topBtnInner: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: C.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 5,
+    },
+  });
+}
+
 export default function GenreScreen() {
   const navigation = useNavigation<Nav>();
+  const { colors: C } = useTheme();
+  const styles = makeStyles(C);
+
   const [selectedGenre, setSelectedGenre] = useState(GENRES[8]);
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,7 +149,6 @@ export default function GenreScreen() {
   const fabVisible = useRef(false);
   const tabsHiddenRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const tabAnim = useRef(new Animated.Value(1)).current;
 
   const tabTranslateY = tabAnim.interpolate({
@@ -116,36 +228,31 @@ export default function GenreScreen() {
       }).start();
     }
 
-    if (y > 60) {
-      hideTabs();
-    } else if (y <= 10) {
-      showTabs();
-    }
+    if (y > 60) hideTabs();
+    else if (y <= 10) showTabs();
   }, [fabOpacity, hideTabs, showTabs]);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 검색창 — 항상 고정 */}
       <View style={styles.searchWrapper}>
         <View style={styles.searchRow}>
-          <Ionicons name="search" size={16} color={Colors.textHint} style={styles.searchIcon} />
+          <Ionicons name="search" size={16} color={C.textHint} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder={`'${selectedGenre.label}' 장르 내 검색`}
-            placeholderTextColor={Colors.textHint}
+            placeholderTextColor={C.textHint}
             value={query}
             onChangeText={handleQueryChange}
             returnKeyType="search"
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => handleQueryChange('')}>
-              <Ionicons name="close-circle" size={16} color={Colors.textHint} />
+              <Ionicons name="close-circle" size={16} color={C.textHint} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* 장르 탭 — 스크롤 시 슬라이드 업 */}
       <Animated.View style={[styles.tabGridWrapper, { transform: [{ translateY: tabTranslateY }] }]}>
         <View style={styles.tabGrid}>
           {GENRES.map(g => (
@@ -162,17 +269,15 @@ export default function GenreScreen() {
         </View>
       </Animated.View>
 
-      {/* 장르 탭 펼치기 화살표 */}
       {tabsHidden && (
         <TouchableOpacity style={styles.expandBtn} onPress={showTabs} activeOpacity={0.7}>
-          <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
+          <Ionicons name="chevron-down" size={20} color={C.textSecondary} />
         </TouchableOpacity>
       )}
 
-      {/* 책 목록 */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={C.primary} />
         </View>
       ) : (
         <Animated.FlatList
@@ -186,7 +291,7 @@ export default function GenreScreen() {
           )}
           ListEmptyComponent={
             searching
-              ? <ActivityIndicator style={{ marginTop: 40 }} color={Colors.primary} />
+              ? <ActivityIndicator style={{ marginTop: 40 }} color={C.primary} />
               : <Text style={styles.empty}>{query.trim() ? '검색 결과가 없습니다.' : '책이 없습니다.'}</Text>
           }
           onScroll={Animated.event(
@@ -197,119 +302,11 @@ export default function GenreScreen() {
         />
       )}
 
-      {/* 맨 위로 버튼 */}
       <Animated.View style={[styles.topBtn, { opacity: fabOpacity }]} pointerEvents="box-none">
         <TouchableOpacity style={styles.topBtnInner} onPress={scrollToTop}>
-          <Ionicons name="arrow-up" size={22} color={Colors.white} />
+          <Ionicons name="arrow-up" size={22} color={C.white} />
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: HEADER_HEIGHT },
-
-  searchWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 12,
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    height: 36,
-    backgroundColor: Colors.background,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  searchIcon: { marginRight: 6 },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.textPrimary,
-    paddingVertical: 0,
-  },
-
-  tabGridWrapper: {
-    position: 'absolute',
-    top: SEARCH_BAR_HEIGHT,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  tabGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-    height: TAB_HEIGHT,
-  },
-  tab: {
-    width: '18%',
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-  },
-  tabActive: { backgroundColor: Colors.primary },
-  tabText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
-  tabTextActive: { color: Colors.white, fontWeight: '700' },
-
-  expandBtn: {
-    position: 'absolute',
-    top: SEARCH_BAR_HEIGHT + 6,
-    left: 0,
-    right: 0,
-    zIndex: 15,
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-
-  list: {
-    paddingTop: HEADER_HEIGHT + 8,
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  empty: {
-    textAlign: 'center',
-    color: Colors.textHint,
-    marginTop: 40,
-  },
-  topBtn: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-  },
-  topBtnInner: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-});

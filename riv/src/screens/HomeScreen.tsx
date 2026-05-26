@@ -7,7 +7,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import BookCard from '../components/BookCard';
-import { Colors } from '../constants/colors';
+import { ColorScheme } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 import { GENRES } from '../constants/genres';
 import { searchBooks, getNewBooks, getTodayRecommended, getBooksByGenre } from '../services/bookApi';
 import { addRecentBook, getUser } from '../services/storage';
@@ -17,8 +18,130 @@ import { RootStackParamList } from '../../App';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+function makeStyles(C: ColorScheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingTop: 10,
+      paddingBottom: 8,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    logo: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: C.primary,
+      letterSpacing: 1,
+    },
+    subtitle: {
+      fontSize: 13,
+      color: C.textSecondary,
+      marginLeft: 8,
+    },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: C.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: C.primary,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      marginHorizontal: 20,
+      marginVertical: 12,
+    },
+    searchInput: {
+      flex: 1,
+      height: 44,
+      backgroundColor: C.card,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      fontSize: 14,
+      color: C.textPrimary,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    searchBtn: {
+      marginLeft: 8,
+      backgroundColor: C.primary,
+      borderRadius: 10,
+      paddingHorizontal: 16,
+      justifyContent: 'center',
+    },
+    searchBtnText: {
+      color: C.white,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    section: {
+      marginTop: 32,
+      paddingHorizontal: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: C.textPrimary,
+      marginBottom: 6,
+    },
+    genreHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    genreHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 8,
+    },
+    genreTags: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    genreTag: {
+      backgroundColor: C.primaryLight,
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    genreTagText: {
+      fontSize: 12,
+      color: C.primary,
+      fontWeight: '600',
+    },
+    genreTagMore: {
+      backgroundColor: C.border,
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    genreTagMoreText: {
+      fontSize: 12,
+      color: C.textSecondary,
+      fontWeight: '600',
+    },
+  });
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
+  const { colors: C } = useTheme();
+  const styles = makeStyles(C);
+
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [recommended, setRecommended] = useState<Book[]>([]);
@@ -30,7 +153,6 @@ export default function HomeScreen() {
   const newBooksRef = useRef<Book[]>([]);
   const genrePoolRef = useRef<Book[]>([]);
 
-  // 최초 1회: 오늘의 추천·신간 로드
   useEffect(() => {
     (async () => {
       const [rec, nb] = await Promise.all([getTodayRecommended(), getNewBooks()]);
@@ -41,7 +163,6 @@ export default function HomeScreen() {
     })();
   }, []);
 
-  // 포커스마다: 유저 정보 + 선호 장르 추천 갱신
   useFocusEffect(
     useCallback(() => {
       (async () => {
@@ -68,7 +189,6 @@ export default function HomeScreen() {
           }
           genrePoolRef.current = combined;
 
-          // 오늘 이미 뽑은 결과가 있으면 재사용
           const saved = await AsyncStorage.getItem('riv_genre_daily');
           if (saved) {
             const { date, books } = JSON.parse(saved);
@@ -77,7 +197,6 @@ export default function HomeScreen() {
               return;
             }
           }
-          // 새 날이거나 저장 없으면 랜덤 선정 후 저장
           const picked = pickRandom(combined, 10);
           setGenreBooks(picked);
           await saveGenreSelection(picked);
@@ -136,7 +255,7 @@ export default function HomeScreen() {
   if (initialLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={C.primary} />
       </View>
     );
   }
@@ -144,7 +263,6 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* 헤더 */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.logo}>Riv</Text>
@@ -158,17 +276,16 @@ export default function HomeScreen() {
             {user ? (
               <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
             ) : (
-              <Ionicons name="person" size={20} color={Colors.textSecondary} />
+              <Ionicons name="person" size={20} color={C.textSecondary} />
             )}
           </TouchableOpacity>
         </View>
 
-        {/* 검색창 */}
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
             placeholder="책 제목, 저자, 키워드 검색"
-            placeholderTextColor={Colors.textHint}
+            placeholderTextColor={C.textHint}
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={handleSearch}
@@ -179,9 +296,8 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 검색 결과 */}
         {loading && (
-          <ActivityIndicator style={{ marginVertical: 16 }} color={Colors.primary} />
+          <ActivityIndicator style={{ marginVertical: 16 }} color={C.primary} />
         )}
         {searchResults.length > 0 && (
           <View style={styles.section}>
@@ -194,7 +310,6 @@ export default function HomeScreen() {
 
         {searchResults.length === 0 && (
           <>
-            {/* 신간 도서 */}
             <View style={[styles.section, { marginTop: 16 }]}>
               <Text style={styles.sectionTitle}>신간 도서</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -204,7 +319,6 @@ export default function HomeScreen() {
               </ScrollView>
             </View>
 
-            {/* 오늘의 추천 */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>오늘의 추천 책</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -214,7 +328,6 @@ export default function HomeScreen() {
               </ScrollView>
             </View>
 
-            {/* 선호 장르 추천 */}
             {genreBooks.length > 0 && user && (
               <View style={styles.section}>
                 <View style={styles.genreHeader}>
@@ -234,7 +347,7 @@ export default function HomeScreen() {
                     </View>
                   </View>
                   <TouchableOpacity onPress={refreshGenreBooks} activeOpacity={0.7}>
-                    <Ionicons name="refresh" size={18} color={Colors.textSecondary} />
+                    <Ionicons name="refresh" size={18} color={C.textSecondary} />
                   </TouchableOpacity>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -252,120 +365,3 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  logo: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: 1,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginLeft: 8,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginVertical: 12,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    backgroundColor: Colors.card,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  searchBtn: {
-    marginLeft: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-  },
-  searchBtnText: {
-    color: Colors.white,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  section: {
-    marginTop: 32,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 6,
-  },
-  genreHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  genreHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 8,
-  },
-  genreTags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  genreTag: {
-    backgroundColor: Colors.primaryLight,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  genreTagText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  genreTagMore: {
-    backgroundColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  genreTagMoreText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-});

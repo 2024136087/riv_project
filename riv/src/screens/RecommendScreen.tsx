@@ -6,7 +6,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Colors } from '../constants/colors';
+import { ColorScheme } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 import { sendMessage } from '../services/aiService';
 import { searchBooks } from '../services/bookApi';
 import { addRecentBook } from '../services/storage';
@@ -19,7 +20,6 @@ function makeId() {
   return Math.random().toString(36).slice(2);
 }
 
-// AI 응답에서 **제목** 패턴의 책 제목 추출
 function extractTitles(text: string): string[] {
   const matches = text.match(/\*\*([^*]+)\*\*/g) ?? [];
   return matches
@@ -36,8 +36,211 @@ const INITIAL_MESSAGE: ChatMessage = {
   suggestions: ['소설', '자기계발', '역사/사회', '과학/철학'],
 };
 
+function makeStyles(C: ColorScheme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.background },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      backgroundColor: C.card,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: C.textPrimary,
+    },
+    resetBtn: {
+      fontSize: 14,
+      color: C.primary,
+      fontWeight: '600',
+    },
+    messageList: {
+      padding: 16,
+      paddingBottom: 8,
+    },
+    messageRow: {
+      flexDirection: 'row',
+      marginBottom: 16,
+      alignItems: 'flex-start',
+    },
+    rowAI: { justifyContent: 'flex-start' },
+    rowUser: { justifyContent: 'flex-end' },
+    avatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: C.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+      marginTop: 2,
+      flexShrink: 0,
+    },
+    avatarText: {
+      color: C.white,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    bubbleColumn: {
+      flex: 1,
+      maxWidth: '80%',
+    },
+    bubble: {
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    bubbleAI: {
+      backgroundColor: C.aiMessage,
+      borderTopLeftRadius: 4,
+    },
+    bubbleUser: {
+      backgroundColor: C.userMessage,
+      borderTopRightRadius: 4,
+      alignSelf: 'flex-end',
+    },
+    messageText: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: C.textPrimary,
+    },
+    messageTextUser: {
+      color: C.white,
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 16,
+      paddingHorizontal: 8,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: C.border,
+    },
+    dividerText: {
+      fontSize: 12,
+      color: C.textHint,
+      marginHorizontal: 10,
+      fontWeight: '500',
+    },
+    suggestionsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 8,
+    },
+    suggestionBtn: {
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: C.primary,
+      backgroundColor: C.card,
+    },
+    suggestionText: {
+      fontSize: 13,
+      color: C.primary,
+      fontWeight: '600',
+    },
+    bookScroll: {
+      marginTop: 10,
+    },
+    bookScrollContent: {
+      paddingRight: 8,
+    },
+    bookCard: {
+      width: 100,
+      marginRight: 10,
+      backgroundColor: C.card,
+      borderRadius: 10,
+      padding: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    bookImage: {
+      width: 84,
+      height: 118,
+      borderRadius: 6,
+      backgroundColor: C.border,
+    },
+    bookTitle: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: C.textPrimary,
+      marginTop: 6,
+      lineHeight: 15,
+    },
+    bookAuthor: {
+      fontSize: 10,
+      color: C.textSecondary,
+      marginTop: 2,
+    },
+    loadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      marginBottom: 8,
+    },
+    loadingBubble: {
+      backgroundColor: C.aiMessage,
+      borderRadius: 16,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      backgroundColor: C.card,
+      borderTopWidth: 1,
+      borderTopColor: C.border,
+    },
+    input: {
+      flex: 1,
+      minHeight: 40,
+      maxHeight: 100,
+      backgroundColor: C.background,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: C.textPrimary,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    sendBtn: {
+      marginLeft: 8,
+      backgroundColor: C.primary,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    sendBtnDisabled: {
+      backgroundColor: C.border,
+    },
+    sendBtnText: {
+      color: C.white,
+      fontWeight: '700',
+      fontSize: 14,
+    },
+  });
+}
+
 export default function RecommendScreen() {
   const navigation = useNavigation<Nav>();
+  const { colors: C } = useTheme();
+  const styles = makeStyles(C);
+
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +249,6 @@ export default function RecommendScreen() {
   const scrollToBottom = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   }, []);
-
 
   useEffect(() => {
     scrollToBottom();
@@ -69,7 +271,6 @@ export default function RecommendScreen() {
     setLoading(true);
 
     try {
-      // 마지막 구분선 이후 메시지만 API에 전송 (이전 대화 제외)
       const lastDividerIdx = [...nextMessages].map(m => m.isDivider).lastIndexOf(true);
       const sessionMessages = lastDividerIdx >= 0
         ? nextMessages.slice(lastDividerIdx + 1)
@@ -77,7 +278,6 @@ export default function RecommendScreen() {
       const apiMessages = sessionMessages.filter(m => m.id !== 'init' && !m.isDivider);
       const { content: reply, suggestions } = await sendMessage(apiMessages);
 
-      // 책 제목 추출 후 검색
       const titles = extractTitles(reply);
       let books: Book[] = [];
       if (titles.length > 0) {
@@ -160,7 +360,6 @@ export default function RecommendScreen() {
             </Text>
           </View>
 
-          {/* 질문 중 예상 답변 버튼 - 마지막 AI 메시지에만, 책 카드 없을 때 */}
           {!item.books &&
             item.suggestions && item.suggestions.length > 0 &&
             item.id === [...messages].reverse().find(m => m.role === 'assistant')?.id && (
@@ -178,7 +377,6 @@ export default function RecommendScreen() {
             </View>
           )}
 
-          {/* 추천 책 카드 */}
           {item.books && item.books.length > 0 && (
             <View>
               <ScrollView
@@ -204,7 +402,6 @@ export default function RecommendScreen() {
                 ))}
               </ScrollView>
 
-              {/* 추천 후 - 다른 책 추천 버튼 */}
               {item.id === [...messages].reverse().find(m => m.role === 'assistant')?.id && (
                 <TouchableOpacity
                   style={[styles.suggestionBtn, { marginTop: 10, alignSelf: 'flex-start' }]}
@@ -250,7 +447,7 @@ export default function RecommendScreen() {
               <Text style={styles.avatarText}>AI</Text>
             </View>
             <View style={styles.loadingBubble}>
-              <ActivityIndicator size="small" color={Colors.primary} />
+              <ActivityIndicator size="small" color={C.primary} />
             </View>
           </View>
         )}
@@ -259,7 +456,7 @@ export default function RecommendScreen() {
           <TextInput
             style={styles.input}
             placeholder="메시지를 입력하세요"
-            placeholderTextColor={Colors.textHint}
+            placeholderTextColor={C.textHint}
             value={input}
             onChangeText={setInput}
             onSubmitEditing={() => handleSend()}
@@ -279,201 +476,3 @@ export default function RecommendScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  resetBtn: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  messageList: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  messageRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    alignItems: 'flex-start',
-  },
-  rowAI: { justifyContent: 'flex-start' },
-  rowUser: { justifyContent: 'flex-end' },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-    marginTop: 2,
-    flexShrink: 0,
-  },
-  avatarText: {
-    color: Colors.white,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  bubbleColumn: {
-    flex: 1,
-    maxWidth: '80%',
-  },
-  bubble: {
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  bubbleAI: {
-    backgroundColor: Colors.aiMessage,
-    borderTopLeftRadius: 4,
-  },
-  bubbleUser: {
-    backgroundColor: Colors.userMessage,
-    borderTopRightRadius: 4,
-    alignSelf: 'flex-end',
-  },
-  messageText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: Colors.textPrimary,
-  },
-  messageTextUser: {
-    color: Colors.white,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-    paddingHorizontal: 8,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    fontSize: 12,
-    color: Colors.textHint,
-    marginHorizontal: 10,
-    fontWeight: '500',
-  },
-  suggestionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  suggestionBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    backgroundColor: Colors.card,
-  },
-  suggestionText: {
-    fontSize: 13,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  bookScroll: {
-    marginTop: 10,
-  },
-  bookScrollContent: {
-    paddingRight: 8,
-  },
-  bookCard: {
-    width: 100,
-    marginRight: 10,
-    backgroundColor: Colors.card,
-    borderRadius: 10,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  bookImage: {
-    width: 84,
-    height: 118,
-    borderRadius: 6,
-    backgroundColor: Colors.border,
-  },
-  bookTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginTop: 6,
-    lineHeight: 15,
-  },
-  bookAuthor: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  loadingBubble: {
-    backgroundColor: Colors.aiMessage,
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: Colors.card,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    backgroundColor: Colors.background,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  sendBtn: {
-    marginLeft: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  sendBtnDisabled: {
-    backgroundColor: Colors.border,
-  },
-  sendBtnText: {
-    color: Colors.white,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-});

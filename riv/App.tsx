@@ -10,7 +10,7 @@ import GenreScreen from './src/screens/GenreScreen';
 import RecommendScreen from './src/screens/RecommendScreen';
 import MyPageScreen from './src/screens/MyPageScreen';
 import BookDetailScreen from './src/screens/BookDetailScreen';
-import { Colors } from './src/constants/colors';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { Book } from './src/types';
 
 export type RootStackParamList = {
@@ -38,6 +38,7 @@ const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> 
 };
 
 function MainTabs() {
+  const { colors: C } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -46,11 +47,11 @@ function MainTabs() {
           const iconName = focused ? icons.active : icons.inactive;
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveTintColor: C.primary,
+        tabBarInactiveTintColor: C.textSecondary,
         tabBarStyle: {
-          backgroundColor: Colors.card,
-          borderTopColor: Colors.border,
+          backgroundColor: C.card,
+          borderTopColor: C.border,
           height: 60,
           paddingBottom: 8,
         },
@@ -69,10 +70,11 @@ function MainTabs() {
   );
 }
 
-export default function App() {
+function AppContent() {
+  const { colors: C, isDark } = useTheme();
   return (
     <NavigationContainer>
-      <StatusBar style="auto" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Navigator>
         <Stack.Screen
           name="Main"
@@ -85,11 +87,20 @@ export default function App() {
           options={({ route }) => ({
             title: route.params.book.title,
             headerBackTitle: '뒤로',
-            headerTintColor: Colors.primary,
-            headerTitleStyle: { fontSize: 15 },
+            headerTintColor: C.primary,
+            headerTitleStyle: { fontSize: 15, color: C.textPrimary } as any,
+            headerStyle: { backgroundColor: C.card } as any,
           })}
         />
       </Stack.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
