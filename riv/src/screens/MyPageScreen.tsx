@@ -194,6 +194,18 @@ function makeStyles(C: ColorScheme) {
     cardNickname: { color: '#fff', fontSize: 14, fontWeight: '700', flex: 1 },
     cardNumber: { color: 'rgba(255,255,255,0.85)', fontSize: 13, letterSpacing: 1, marginTop: 16 },
     cardExpiry: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
+    cardConfirmRow: {
+      flexDirection: 'row', gap: 6, marginTop: 10,
+    },
+    cardConfirmBtn: {
+      flex: 1, paddingVertical: 6, borderRadius: 8,
+      backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center',
+    },
+    cardConfirmDeleteBtn: {
+      flex: 1, paddingVertical: 6, borderRadius: 8,
+      backgroundColor: 'rgba(220,50,50,0.85)', alignItems: 'center',
+    },
+    cardConfirmText: { color: '#fff', fontSize: 12, fontWeight: '600' },
     cardAdd: {
       width: 200, height: 118, borderRadius: 14,
       backgroundColor: C.background,
@@ -263,6 +275,7 @@ export default function MyPageScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
 
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
   const [chargeModalVisible, setChargeModalVisible] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
@@ -437,17 +450,10 @@ export default function MyPageScreen() {
     Alert.alert('충전 완료', `${chargeAmount.toLocaleString()}C가 충전되었습니다.\n현재 잔액: ${newCash.toLocaleString()}C`);
   }, [chargeAmount, cash, cards, closeChargeModal]);
 
-  const handleRemoveCard = useCallback((id: string) => {
-    Alert.alert('카드 삭제', '이 카드를 삭제하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제', style: 'destructive',
-        onPress: async () => {
-          await removeCard(id);
-          setCards(prev => prev.filter(c => c.id !== id));
-        },
-      },
-    ]);
+  const handleRemoveCard = useCallback(async (id: string) => {
+    await removeCard(id);
+    setCards(prev => prev.filter(c => c.id !== id));
+    setDeletingCardId(null);
   }, []);
 
   return (
@@ -558,29 +564,48 @@ export default function MyPageScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>결제 카드</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {cards.map((card, index) => (
-              <View
-                key={card.id}
-                style={[styles.cardItem, { backgroundColor: CARD_COLORS[index % CARD_COLORS.length] }]}
-              >
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardNickname} numberOfLines={1}>{card.nickname}</Text>
-                  <TouchableOpacity
-                    style={styles.cardDeleteBtn}
-                    onPress={() => handleRemoveCard(card.id)}
-                  >
-                    <Ionicons name="close" size={13} color="#fff" />
-                  </TouchableOpacity>
+            {cards.map((card, index) => {
+              const isDeleting = deletingCardId === card.id;
+              return (
+                <View
+                  key={card.id}
+                  style={[styles.cardItem, { backgroundColor: CARD_COLORS[index % CARD_COLORS.length] }]}
+                >
+                  <View style={styles.cardTop}>
+                    <Text style={styles.cardNickname} numberOfLines={1}>{card.nickname}</Text>
+                    <TouchableOpacity
+                      style={styles.cardDeleteBtn}
+                      onPress={() => setDeletingCardId(isDeleting ? null : card.id)}
+                    >
+                      <Ionicons name={isDeleting ? 'close' : 'trash-outline'} size={13} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.cardNumber}>**** **** **** {card.number}</Text>
+                  <Text style={styles.cardExpiry}>{card.expiry}</Text>
+                  {isDeleting && (
+                    <View style={styles.cardConfirmRow}>
+                      <TouchableOpacity
+                        style={styles.cardConfirmBtn}
+                        onPress={() => setDeletingCardId(null)}
+                      >
+                        <Text style={styles.cardConfirmText}>취소</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.cardConfirmDeleteBtn}
+                        onPress={() => handleRemoveCard(card.id)}
+                      >
+                        <Text style={styles.cardConfirmText}>삭제</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.cardNumber}>**** **** **** {card.number}</Text>
-                <Text style={styles.cardExpiry}>{card.expiry}</Text>
-              </View>
-            ))}
+              );
+            })}
             <TouchableOpacity style={styles.cardAdd} onPress={openCardModal}>
               <Ionicons name="add" size={36} color={C.textHint} />
             </TouchableOpacity>
           </ScrollView>
-          <Text style={styles.cardHint}>× 버튼을 눌러 카드를 삭제할 수 있습니다</Text>
+          <Text style={styles.cardHint}>휴지통 아이콘을 눌러 카드를 삭제할 수 있습니다</Text>
         </View>
 
         {/* 최근 본 책 */}
