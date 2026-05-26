@@ -2,9 +2,9 @@ import { ChatMessage } from '../types';
 
 const GEMINI_API_KEY: string = 'AIzaSyBh09Mjq5UfrMjsK-pXYWO5zp-7i0ppkuM';
 const GEMINI_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-flash-latest',
-  'gemini-2.0-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-latest',
 ];
 
 function getUrl(model: string) {
@@ -58,16 +58,10 @@ export async function sendMessage(messages: ChatMessage[]): Promise<AIResponse> 
       body: JSON.stringify(body),
     });
 
-    if (res.status === 429 || res.status === 503) {
+    if (!res.ok) {
       const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
       lastError = new Error(`Gemini API 오류 (${res.status}): ${err?.error?.message ?? res.statusText}`);
-      continue; // 다음 모델 시도
-    }
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => res.text());
-      const msg = typeof err === 'object' ? (err as any)?.error?.message : err;
-      throw new Error(`Gemini API 오류 (${res.status}): ${msg}`);
+      continue; // 어떤 오류든 다음 모델 시도
     }
 
     const data = await res.json();
