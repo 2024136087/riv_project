@@ -164,7 +164,7 @@ export default function GenreScreen() {
   const fabOpacity = useRef(new Animated.Value(0)).current;
   const fabVisible = useRef(false);
   const tabsHiddenRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const tabAnim = useRef(new Animated.Value(1)).current;
 
   const tabTranslateY = tabAnim.interpolate({
@@ -206,22 +206,11 @@ export default function GenreScreen() {
 
   const handleQueryChange = useCallback((text: string) => {
     setQuery(text);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!text.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
-      const results = await searchBooksInGenre(text.trim(), selectedGenre.kdc);
-      setSearchResults(results);
-      setSearching(false);
-    }, 400);
-  }, [selectedGenre.kdc]);
+    if (!text.trim()) setSearchResults([]);
+  }, []);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
     setSearching(true);
     const results = await searchBooksInGenre(query.trim(), selectedGenre.kdc);
     setSearchResults(results);
