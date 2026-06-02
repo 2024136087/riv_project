@@ -1,7 +1,7 @@
 import { Book } from '../types';
 
 const AUTH_KEY = '0bb08275ca257dc2a4218bec631e8172a8b1ca8b89e9450a74675a2f652efde9';
-const BASE_URL = 'http://data4library.kr/api';
+const BASE_URL = 'https://data4library.kr/api';
 
 // API 응답을 공통 Book 타입으로 변환
 function mapDoc(doc: any): Book {
