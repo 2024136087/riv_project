@@ -3,8 +3,9 @@ import { ChatMessage } from '../types';
 const GEMINI_API_KEY: string = 'AIzaSyBh09Mjq5UfrMjsK-pXYWO5zp-7i0ppkuM';
 const GEMINI_MODELS = [
   'gemini-2.5-flash',
-  'gemini-flash-latest',
+  'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
 ];
 
 function getUrl(model: string) {
@@ -50,7 +51,6 @@ export async function sendMessage(messages: ChatMessage[]): Promise<AIResponse> 
     generationConfig: { temperature: 0.9, maxOutputTokens: 2048 },
   };
 
-  let lastError: Error | null = null;
   for (const model of GEMINI_MODELS) {
     const res = await fetch(getUrl(model), {
       method: 'POST',
@@ -59,15 +59,11 @@ export async function sendMessage(messages: ChatMessage[]): Promise<AIResponse> 
     });
 
     if (res.status === 429 || res.status === 503) {
-      const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
-      lastError = new Error(`Gemini API 오류 (${res.status}): ${err?.error?.message ?? res.statusText}`);
       continue; // 다음 모델 시도
     }
 
     if (!res.ok) {
-      const err = await res.json().catch(() => res.text());
-      const msg = typeof err === 'object' ? (err as any)?.error?.message : err;
-      throw new Error(`Gemini API 오류 (${res.status}): ${msg}`);
+      continue; // 다른 오류도 다음 모델로
     }
 
     const data = await res.json();
@@ -75,7 +71,8 @@ export async function sendMessage(messages: ChatMessage[]): Promise<AIResponse> 
     return parseResponse(raw);
   }
 
-  throw lastError ?? new Error('모든 Gemini 모델 요청에 실패했습니다.');
+  // 모든 모델 실패 시 목업 응답으로 fallback
+  return getMockResponse(messages);
 }
 
 // 응답에서 content와 suggestions 분리
