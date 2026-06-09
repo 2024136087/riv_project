@@ -19,6 +19,7 @@ import PasswordChangeScreen from './src/screens/PasswordChangeScreen';
 import CashPaymentScreen from './src/screens/CashPaymentScreen';
 import CartScreen from './src/screens/CartScreen';
 import BookPurchaseScreen from './src/screens/BookPurchaseScreen';
+import CartCheckoutScreen from './src/screens/CartCheckoutScreen';
 import { ThemeProvider, useColors, useTheme } from './src/contexts/ThemeContext';
 import { Book } from './src/types';
 
@@ -34,6 +35,7 @@ export type RootStackParamList = {
   CashPayment: { amount: number; books?: Book[]; returnToPurchase?: boolean };
   Cart: undefined;
   BookPurchase: { book: Book };
+  CartCheckout: { items: import('./src/types').CartItem[]; total: number };
 };
 
 export type TabParamList = {
@@ -154,6 +156,11 @@ function AppNavigator() {
         <Stack.Screen
           name="BookPurchase"
           component={BookPurchaseScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CartCheckout"
+          component={CartCheckoutScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

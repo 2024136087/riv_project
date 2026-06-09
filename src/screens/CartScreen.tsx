@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../contexts/ThemeContext';
-import { getCart, removeFromCart, updateCartQuantity, getCards } from '../services/storage';
+import { getCart, removeFromCart, updateCartQuantity } from '../services/storage';
 import { CartItem } from '../types';
 import { RootStackParamList } from '../../App';
 
@@ -21,15 +21,12 @@ export default function CartScreen() {
 
   const [items, setItems] = useState<CartItem[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [hasCard, setHasCard] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const [cart, cards] = await Promise.all([getCart(), getCards()]);
+    getCart().then(cart => {
       setItems(cart);
       setSelected(new Set(cart.map(i => i.book.isbn)));
-      setHasCard(cards.length > 0);
-    })();
+    });
   }, []);
 
   const allSelected = items.length > 0 && selected.size === items.length;
@@ -144,10 +141,9 @@ export default function CartScreen() {
     },
     orderBtnDisabled: { backgroundColor: C.border },
     orderBtnText: { color: C.white, fontSize: 16, fontWeight: '700' },
-    noCardText: { fontSize: 12, color: C.error, textAlign: 'center' },
   });
 
-  const canOrder = selected.size > 0 && hasCard;
+  const canOrder = selected.size > 0;
 
   return (
     <SafeAreaView style={s.container}>
@@ -247,15 +243,12 @@ export default function CartScreen() {
             </View>
             <Text style={s.totalAmount}>{total.toLocaleString()}원</Text>
           </View>
-          {!hasCard && (
-            <Text style={s.noCardText}>결제할 카드가 등록되지 않았습니다.</Text>
-          )}
           <TouchableOpacity
             style={[s.orderBtn, !canOrder && s.orderBtnDisabled]}
             disabled={!canOrder}
-            onPress={() => navigation.navigate('CashPayment', {
-              amount: total,
-              books: selectedItems.map(i => i.book),
+            onPress={() => navigation.navigate('CartCheckout', {
+              items: selectedItems,
+              total,
             })}
           >
             <Text style={s.orderBtnText}>
