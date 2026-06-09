@@ -31,7 +31,7 @@ export type RootStackParamList = {
   GenreSelect: undefined;
   Welcome: { userName: string };
   PasswordChange: undefined;
-  CashPayment: { amount: number; books?: Book[] };
+  CashPayment: { amount: number; books?: Book[]; returnToPurchase?: boolean };
   Cart: undefined;
   BookPurchase: { book: Book };
 };

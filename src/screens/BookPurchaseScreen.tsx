@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   SafeAreaView, Image, ScrollView,
 } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../contexts/ThemeContext';
@@ -32,6 +32,11 @@ export default function BookPurchaseScreen() {
       setAlreadyOwned(owned);
     });
   }, [book.isbn]);
+
+  // 충전 후 돌아왔을 때 캐시 잔액 갱신
+  useFocusEffect(useCallback(() => {
+    getCash().then(setCashState);
+  }, []));
 
   const total = UNIT_PRICE * quantity;
   const remaining = cash - total;
@@ -316,7 +321,7 @@ export default function BookPurchaseScreen() {
               </Text>
               <TouchableOpacity
                 style={s.chargeBtn}
-                onPress={() => navigation.navigate('CashPayment', { amount: total - cash })}
+                onPress={() => navigation.navigate('CashPayment', { amount: total - cash, returnToPurchase: true })}
               >
                 <Text style={s.chargeBtnText}>충전</Text>
               </TouchableOpacity>

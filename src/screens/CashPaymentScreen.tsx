@@ -38,7 +38,7 @@ const P = {
 export default function CashPaymentScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { amount, books } = route.params;
+  const { amount, books, returnToPurchase } = route.params;
 
   // books가 있으면 도서 구매 모드, 없으면 캐시 충전 모드
   const isPurchaseMode = !!(books && books.length > 0);
@@ -72,12 +72,12 @@ export default function CashPaymentScreen() {
   }, [amount, books, isPurchaseMode]);
 
   const handleBack = useCallback(() => {
-    if (isPurchaseMode) {
+    if (isPurchaseMode || returnToPurchase) {
       navigation.goBack();
     } else {
       navigation.navigate('Main', { screen: 'MyPage' });
     }
-  }, [isPurchaseMode, navigation]);
+  }, [isPurchaseMode, returnToPurchase, navigation]);
 
   if (paid) {
     return (
