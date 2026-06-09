@@ -107,7 +107,7 @@ export default function BookDetailScreen() {
   }, [book.isbn, purchasedChecked]));
 
   const handlePurchasePress = useCallback(() => {
-    navigation.navigate('CashPayment', { amount: UNIT_PRICE, books: [book] });
+    navigation.navigate('BookPurchase', { book });
   }, [book, navigation]);
 
   const handleCartBtnPress = useCallback(() => {
