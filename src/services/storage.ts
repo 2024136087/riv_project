@@ -9,6 +9,7 @@ const KEYS = {
   CASH: 'riv_cash',
   CARDS: 'riv_cards',
   CART: 'riv_cart',
+  PURCHASE_COUNTS: 'riv_purchase_counts',
 };
 
 // User
@@ -137,4 +138,18 @@ export async function clearCart(): Promise<void> {
 export async function isInCart(isbn: string): Promise<boolean> {
   const cart = await getCart();
   return cart.some(i => i.book.isbn === isbn);
+}
+
+// Purchase counts
+export async function getPurchaseCount(isbn: string): Promise<number> {
+  const raw = await AsyncStorage.getItem(KEYS.PURCHASE_COUNTS);
+  const counts: Record<string, number> = raw ? JSON.parse(raw) : {};
+  return counts[isbn] ?? 0;
+}
+
+export async function incrementPurchaseCount(isbn: string): Promise<void> {
+  const raw = await AsyncStorage.getItem(KEYS.PURCHASE_COUNTS);
+  const counts: Record<string, number> = raw ? JSON.parse(raw) : {};
+  counts[isbn] = (counts[isbn] ?? 0) + 1;
+  await AsyncStorage.setItem(KEYS.PURCHASE_COUNTS, JSON.stringify(counts));
 }

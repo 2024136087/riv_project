@@ -7,7 +7,7 @@ import { RouteProp, useNavigation, useRoute, useFocusEffect } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../contexts/ThemeContext';
-import { getCash, setCash, addPurchasedBook, isPurchased } from '../services/storage';
+import { getCash, setCash, addPurchasedBook, isPurchased, incrementPurchaseCount } from '../services/storage';
 import { RootStackParamList } from '../../App';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -46,6 +46,7 @@ export default function BookPurchaseScreen() {
     if (!canBuy) return;
     await setCash(cash - total);
     await addPurchasedBook(book);
+    await incrementPurchaseCount(book.isbn);
     setPaid(true);
   }, [canBuy, cash, total, book]);
 

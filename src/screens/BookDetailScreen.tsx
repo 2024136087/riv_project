@@ -10,6 +10,7 @@ import { useColors } from '../contexts/ThemeContext';
 import {
   isPurchased, addRecentBook,
   isInCart, addToCart, removeFromCart, updateCartQuantity,
+  getPurchaseCount,
 } from '../services/storage';
 import { searchBooks, getTodayRecommended } from '../services/bookApi';
 import { Book } from '../types';
@@ -30,6 +31,7 @@ export default function BookDetailScreen() {
   const { book } = route.params;
 
   const [purchased, setPurchased] = useState(false);
+  const [purchaseCount, setPurchaseCount] = useState(0);
   const [inCart, setInCart] = useState(false);
   const [related, setRelated] = useState<Book[]>([]);
   const [purchasedChecked, setPurchasedChecked] = useState(false);
@@ -77,13 +79,15 @@ export default function BookDetailScreen() {
     (async () => {
       const exclude = (books: Book[]) => books.filter(b => b.isbn !== book.isbn).slice(0, 6);
 
-      const [p, cart, byAuthor] = await Promise.all([
+      const [p, cnt, cart, byAuthor] = await Promise.all([
         isPurchased(book.isbn),
+        getPurchaseCount(book.isbn),
         isInCart(book.isbn),
         searchBooks(book.authors[0] ?? book.title),
       ]);
       setInCart(cart);
       setPurchased(p);
+      setPurchaseCount(cnt);
       setPurchasedChecked(true);
 
       let result = exclude(byAuthor);
@@ -99,10 +103,13 @@ export default function BookDetailScreen() {
     })();
   }, [book]);
 
-  // 결제 후 돌아왔을 때 구매 상태 갱신
+  // 결제 후 돌아왔을 때 구매 상태 및 횟수 갱신
   useFocusEffect(useCallback(() => {
     if (purchasedChecked) {
-      isPurchased(book.isbn).then(setPurchased);
+      Promise.all([isPurchased(book.isbn), getPurchaseCount(book.isbn)]).then(([p, cnt]) => {
+        setPurchased(p);
+        setPurchaseCount(cnt);
+      });
     }
   }, [book.isbn, purchasedChecked]));
 
@@ -202,6 +209,8 @@ export default function BookDetailScreen() {
     // 가격 + 버튼
     priceSection: {
       backgroundColor: Colors.card, paddingHorizontal: 20, paddingVertical: 16,
+    },
+    priceMainRow: {
       flexDirection: 'row', alignItems: 'center',
     },
     priceWrap: { flex: 1 },
@@ -220,8 +229,10 @@ export default function BookDetailScreen() {
       height: 44, paddingHorizontal: 16, backgroundColor: Colors.primary,
       borderRadius: 10, justifyContent: 'center', alignItems: 'center',
     },
-    purchasedBtn: { backgroundColor: Colors.border },
     purchaseBtnText: { color: Colors.white, fontSize: 14, fontWeight: '700' },
+    purchaseCountText: {
+      fontSize: 12, color: Colors.textHint, marginTop: 10,
+    },
 
     // 책 소개
     section: { backgroundColor: Colors.card, padding: 20 },
@@ -361,35 +372,38 @@ export default function BookDetailScreen() {
 
         {/* 가격 + 버튼 */}
         <View style={styles.priceSection}>
-          <View style={styles.priceWrap}>
-            <Text style={styles.priceLabel}>판매가</Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.salePrice}>10,000</Text>
-              <Text style={styles.priceUnit}>원</Text>
+          <View style={styles.priceMainRow}>
+            <View style={styles.priceWrap}>
+              <Text style={styles.priceLabel}>판매가</Text>
+              <View style={styles.priceRow}>
+                <Text style={styles.salePrice}>10,000</Text>
+                <Text style={styles.priceUnit}>원</Text>
+              </View>
+            </View>
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                style={[styles.cartBtn, inCart && styles.cartBtnActive]}
+                onPress={handleCartBtnPress}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={inCart ? 'cart' : 'cart-outline'}
+                  size={20}
+                  color={inCart ? Colors.white : Colors.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.purchaseBtn}
+                onPress={handlePurchasePress}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.purchaseBtnText}>구매하기</Text>
+              </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.btnRow}>
-            <TouchableOpacity
-              style={[styles.cartBtn, inCart && styles.cartBtnActive]}
-              onPress={handleCartBtnPress}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={inCart ? 'cart' : 'cart-outline'}
-                size={20}
-                color={inCart ? Colors.white : Colors.primary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.purchaseBtn, purchased && styles.purchasedBtn]}
-              onPress={handlePurchasePress}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.purchaseBtnText}>
-                {purchased ? '다시 구매' : '구매하기'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {purchaseCount > 0 && (
+            <Text style={styles.purchaseCountText}>{purchaseCount}번 구매한 책입니다.</Text>
+          )}
         </View>
 
         <View style={styles.divider} />
