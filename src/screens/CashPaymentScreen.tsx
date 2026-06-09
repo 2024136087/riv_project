@@ -20,7 +20,6 @@ const CARD_GAP = 16;
 const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
 const H_PADDING = (SCREEN_WIDTH - CARD_WIDTH) / 2;
 
-// 외부 결제 페이지는 앱 테마와 무관하게 고정 색상 사용
 const P = {
   bg: '#F2F4F7',
   white: '#FFFFFF',
@@ -33,6 +32,7 @@ const P = {
   success: '#0AB573',
   successLight: '#E6F8F1',
   divider: '#EAEDF2',
+  error: '#E63946',
 };
 
 export default function CashPaymentScreen() {
@@ -40,9 +40,13 @@ export default function CashPaymentScreen() {
   const route = useRoute<Route>();
   const { amount, books } = route.params;
 
+  // books가 있으면 도서 구매 모드, 없으면 캐시 충전 모드
+  const isPurchaseMode = !!(books && books.length > 0);
+
   const [cards, setCards] = useState<PaymentCard[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [paid, setPaid] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -51,13 +55,29 @@ export default function CashPaymentScreen() {
 
   const handlePay = useCallback(async () => {
     const current = await getCash();
-    await setCash(current + amount);
-    if (books && books.length > 0) {
-      await Promise.all(books.map(b => addPurchasedBook(b)));
+    if (isPurchaseMode && current < amount) {
+      setErrorMsg(`캐시가 부족합니다. (보유: ${current.toLocaleString()}C)`);
+      return;
+    }
+    setErrorMsg('');
+
+    if (isPurchaseMode) {
+      await setCash(current - amount);
+      await Promise.all(books!.map(b => addPurchasedBook(b)));
+    } else {
+      await setCash(current + amount);
       await clearCart();
     }
     setPaid(true);
-  }, [amount, books]);
+  }, [amount, books, isPurchaseMode]);
+
+  const handleBack = useCallback(() => {
+    if (isPurchaseMode) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Main', { screen: 'MyPage' });
+    }
+  }, [isPurchaseMode, navigation]);
 
   if (paid) {
     return (
@@ -67,13 +87,23 @@ export default function CashPaymentScreen() {
           <View style={s.completedIconWrap}>
             <Ionicons name="checkmark-circle" size={72} color={P.success} />
           </View>
-          <Text style={s.completedTitle}>결제가 완료되었습니다.</Text>
-          <Text style={s.completedSub}>{amount.toLocaleString()}C 충전 완료</Text>
+          <Text style={s.completedTitle}>
+            {isPurchaseMode ? '구매가 완료되었습니다.' : '결제가 완료되었습니다.'}
+          </Text>
+          <Text style={s.completedSub}>
+            {isPurchaseMode
+              ? `${books!.length}권의 책이 구매 목록에 추가되었습니다.`
+              : `${amount.toLocaleString()}C 충전 완료`}
+          </Text>
 
           <View style={s.completedCard}>
             <View style={s.completedRow}>
-              <Text style={s.completedRowLabel}>결제 금액</Text>
-              <Text style={s.completedRowValue}>{amount.toLocaleString()}C</Text>
+              <Text style={s.completedRowLabel}>
+                {isPurchaseMode ? '결제 금액' : '충전 금액'}
+              </Text>
+              <Text style={s.completedRowValue}>
+                {isPurchaseMode ? `${amount.toLocaleString()}원` : `${amount.toLocaleString()}C`}
+              </Text>
             </View>
             <View style={s.completedDivider} />
             <View style={s.completedRow}>
@@ -84,12 +114,20 @@ export default function CashPaymentScreen() {
                   : '카드'}
               </Text>
             </View>
+            {isPurchaseMode && books && books.length > 0 && (
+              <>
+                <View style={s.completedDivider} />
+                <View style={s.completedRow}>
+                  <Text style={s.completedRowLabel}>구매 도서</Text>
+                  <Text style={[s.completedRowValue, { flex: 1, textAlign: 'right' }]} numberOfLines={2}>
+                    {books[0].title}{books.length > 1 ? ` 외 ${books.length - 1}권` : ''}
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
 
-          <TouchableOpacity
-            style={s.backBtn}
-            onPress={() => navigation.navigate('Main', { screen: 'MyPage' })}
-          >
+          <TouchableOpacity style={s.backBtn} onPress={handleBack}>
             <Text style={s.backBtnText}>돌아가기</Text>
           </TouchableOpacity>
         </View>
@@ -115,8 +153,18 @@ export default function CashPaymentScreen() {
 
       {/* 결제 금액 */}
       <View style={s.amountSection}>
-        <Text style={s.amountLabel}>결제 금액</Text>
-        <Text style={s.amountValue}>{amount.toLocaleString()}<Text style={s.amountUnit}> C</Text></Text>
+        <Text style={s.amountLabel}>
+          {isPurchaseMode ? '구매 금액' : '충전 금액'}
+        </Text>
+        <Text style={s.amountValue}>
+          {amount.toLocaleString()}
+          <Text style={s.amountUnit}>{isPurchaseMode ? ' 원' : ' C'}</Text>
+        </Text>
+        {isPurchaseMode && books && books.length > 0 && (
+          <Text style={s.bookTitle} numberOfLines={1}>
+            {books[0].title}{books.length > 1 ? ` 외 ${books.length - 1}권` : ''}
+          </Text>
+        )}
       </View>
 
       <View style={s.divider} />
@@ -149,7 +197,6 @@ export default function CashPaymentScreen() {
               { backgroundColor: CARD_COLORS[index % CARD_COLORS.length] },
               index === selectedIndex && s.cardItemSelected,
             ]}>
-              {/* 카드 칩 */}
               <View style={s.cardChip} />
               <View style={s.cardBottom}>
                 <Text style={s.cardNickname}>{item.nickname}</Text>
@@ -177,6 +224,14 @@ export default function CashPaymentScreen() {
 
       <View style={{ flex: 1 }} />
 
+      {/* 오류 메시지 */}
+      {errorMsg ? (
+        <View style={s.errorWrap}>
+          <Ionicons name="alert-circle-outline" size={14} color={P.error} />
+          <Text style={s.errorText}>{errorMsg}</Text>
+        </View>
+      ) : null}
+
       {/* 보안 배지 */}
       <View style={s.securityBadge}>
         <Ionicons name="shield-checkmark-outline" size={13} color={P.textHint} />
@@ -185,8 +240,19 @@ export default function CashPaymentScreen() {
 
       {/* 결제 버튼 */}
       <View style={s.footer}>
-        <TouchableOpacity style={s.payBtn} onPress={handlePay} activeOpacity={0.85}>
-          <Text style={s.payBtnText}>{amount.toLocaleString()}C 결제하기</Text>
+        <TouchableOpacity
+          style={[s.payBtn, cards.length === 0 && s.payBtnDisabled]}
+          onPress={handlePay}
+          activeOpacity={0.85}
+          disabled={cards.length === 0}
+        >
+          <Text style={s.payBtnText}>
+            {cards.length === 0
+              ? '등록된 카드가 없습니다'
+              : isPurchaseMode
+                ? `${amount.toLocaleString()}원 결제하기`
+                : `${amount.toLocaleString()}C 충전하기`}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -205,14 +271,6 @@ const s = StyleSheet.create({
   headerCenter: { flexDirection: 'row', alignItems: 'center' },
   headerBrand: { fontSize: 14, fontWeight: '700', color: P.accent, letterSpacing: 0.5 },
 
-  merchantBar: {
-    backgroundColor: P.white, paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: P.border,
-    alignItems: 'center',
-  },
-  merchantName: { fontSize: 15, fontWeight: '700', color: P.text },
-  merchantDesc: { fontSize: 12, color: P.textSub, marginTop: 2 },
-
   amountSection: {
     backgroundColor: P.white, paddingHorizontal: 24, paddingVertical: 20,
     alignItems: 'center',
@@ -220,6 +278,7 @@ const s = StyleSheet.create({
   amountLabel: { fontSize: 12, color: P.textSub, marginBottom: 6, letterSpacing: 0.3 },
   amountValue: { fontSize: 36, fontWeight: '800', color: P.text },
   amountUnit: { fontSize: 20, fontWeight: '600', color: P.textSub },
+  bookTitle: { fontSize: 13, color: P.textSub, marginTop: 8, textAlign: 'center' },
 
   divider: { height: 8, backgroundColor: P.divider },
 
@@ -251,6 +310,12 @@ const s = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: P.border },
   dotActive: { width: 18, backgroundColor: P.accent },
 
+  errorWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 20, paddingBottom: 8, justifyContent: 'center',
+  },
+  errorText: { fontSize: 13, color: P.error, fontWeight: '600' },
+
   securityBadge: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 5, paddingBottom: 12,
@@ -265,13 +330,14 @@ const s = StyleSheet.create({
     backgroundColor: P.accent, height: 52, borderRadius: 12,
     justifyContent: 'center', alignItems: 'center',
   },
+  payBtnDisabled: { backgroundColor: P.textHint },
   payBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
   // 완료 화면
   completedWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28 },
   completedIconWrap: { marginBottom: 16 },
   completedTitle: { fontSize: 20, fontWeight: '800', color: P.text, marginBottom: 6 },
-  completedSub: { fontSize: 14, color: P.textSub, marginBottom: 32 },
+  completedSub: { fontSize: 14, color: P.textSub, marginBottom: 32, textAlign: 'center' },
   completedCard: {
     width: '100%', backgroundColor: P.white, borderRadius: 16,
     padding: 20, marginBottom: 32,

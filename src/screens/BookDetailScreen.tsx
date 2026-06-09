@@ -4,11 +4,11 @@ import {
   TouchableOpacity, Alert, SafeAreaView, Linking,
   Modal, Animated,
 } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../contexts/ThemeContext';
 import {
-  isPurchased, addPurchasedBook, removePurchasedBook, addRecentBook,
+  isPurchased, addRecentBook,
   isInCart, addToCart, removeFromCart, updateCartQuantity,
 } from '../services/storage';
 import { searchBooks, getTodayRecommended } from '../services/bookApi';
@@ -32,6 +32,7 @@ export default function BookDetailScreen() {
   const [purchased, setPurchased] = useState(false);
   const [inCart, setInCart] = useState(false);
   const [related, setRelated] = useState<Book[]>([]);
+  const [purchasedChecked, setPurchasedChecked] = useState(false);
 
   // 장바구니 바텀시트
   const [cartModalVisible, setCartModalVisible] = useState(false);
@@ -83,6 +84,7 @@ export default function BookDetailScreen() {
       ]);
       setInCart(cart);
       setPurchased(p);
+      setPurchasedChecked(true);
 
       let result = exclude(byAuthor);
       if (result.length === 0) {
@@ -97,21 +99,16 @@ export default function BookDetailScreen() {
     })();
   }, [book]);
 
-  const handlePurchaseToggle = useCallback(async () => {
-    if (purchased) {
-      Alert.alert('구매 취소', '구매 목록에서 삭제할까요?', [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제', style: 'destructive',
-          onPress: async () => { await removePurchasedBook(book.isbn); setPurchased(false); },
-        },
-      ]);
-    } else {
-      await addPurchasedBook(book);
-      setPurchased(true);
-      Alert.alert('완료', '구매한 책에 추가되었습니다.');
+  // 결제 후 돌아왔을 때 구매 상태 갱신
+  useFocusEffect(useCallback(() => {
+    if (purchasedChecked) {
+      isPurchased(book.isbn).then(setPurchased);
     }
-  }, [book, purchased]);
+  }, [book.isbn, purchasedChecked]));
+
+  const handlePurchasePress = useCallback(() => {
+    navigation.navigate('CashPayment', { amount: UNIT_PRICE, books: [book] });
+  }, [book, navigation]);
 
   const handleCartBtnPress = useCallback(() => {
     if (inCart) {
@@ -385,11 +382,11 @@ export default function BookDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.purchaseBtn, purchased && styles.purchasedBtn]}
-              onPress={handlePurchaseToggle}
+              onPress={handlePurchasePress}
               activeOpacity={0.8}
             >
               <Text style={styles.purchaseBtnText}>
-                {purchased ? '구매 취소' : '구매하기'}
+                {purchased ? '다시 구매' : '구매하기'}
               </Text>
             </TouchableOpacity>
           </View>
