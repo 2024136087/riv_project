@@ -156,33 +156,30 @@ export default function BookDetailScreen() {
     },
 
     // 가격
-    priceSection: { backgroundColor: Colors.card, padding: 20 },
-    priceLabel: { fontSize: 12, color: Colors.textSecondary, marginBottom: 6 },
-    priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-    discountRate: { fontSize: 26, fontWeight: '800', color: Colors.error },
-    salePrice: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-    priceUnit: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary, marginBottom: 2 },
-    originalPriceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
-    originalPriceLabel: { fontSize: 12, color: Colors.textHint },
-    originalPrice: {
-      fontSize: 13, color: Colors.textHint,
-      textDecorationLine: 'line-through',
+    priceSection: {
+      backgroundColor: Colors.card, paddingHorizontal: 20, paddingVertical: 16,
+      flexDirection: 'row', alignItems: 'center',
     },
-    btnRow: { flexDirection: 'row', marginTop: 16, gap: 10 },
+    priceWrap: { flex: 1 },
+    priceLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 2 },
+    priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+    salePrice: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
+    priceUnit: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 2 },
+    btnRow: { flexDirection: 'row', gap: 8 },
     cartBtn: {
-      flex: 1, height: 52, borderRadius: 12, flexDirection: 'row',
+      width: 44, height: 44, borderRadius: 10, flexDirection: 'row',
       borderWidth: 1.5, borderColor: Colors.primary,
-      justifyContent: 'center', alignItems: 'center', gap: 6,
+      justifyContent: 'center', alignItems: 'center',
     },
     cartBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-    cartBtnText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
+    cartBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
     cartBtnTextActive: { color: Colors.white },
     purchaseBtn: {
-      flex: 1, height: 52, backgroundColor: Colors.primary,
-      borderRadius: 12, justifyContent: 'center', alignItems: 'center',
+      height: 44, paddingHorizontal: 16, backgroundColor: Colors.primary,
+      borderRadius: 10, justifyContent: 'center', alignItems: 'center',
     },
     purchasedBtn: { backgroundColor: Colors.border },
-    purchaseBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
+    purchaseBtnText: { color: Colors.white, fontSize: 14, fontWeight: '700' },
 
     // 책 소개
     section: { backgroundColor: Colors.card, padding: 20 },
@@ -265,28 +262,15 @@ export default function BookDetailScreen() {
           </>
         ) : null}
 
-        {/* 가격 */}
+        {/* 가격 + 버튼 */}
         <View style={styles.priceSection}>
-          {salePrice ? (
-            <>
-              <Text style={styles.priceLabel}>판매가</Text>
-              <View style={styles.priceRow}>
-                {discountRate > 0 && (
-                  <Text style={styles.discountRate}>{discountRate}%</Text>
-                )}
-                <Text style={styles.salePrice}>{salePrice.toLocaleString()}</Text>
-                <Text style={styles.priceUnit}>원</Text>
-              </View>
-              {discountRate > 0 && displayPrice && (
-                <View style={styles.originalPriceRow}>
-                  <Text style={styles.originalPriceLabel}>정가</Text>
-                  <Text style={styles.originalPrice}>{displayPrice.toLocaleString()}원</Text>
-                </View>
-              )}
-            </>
-          ) : (
-            <Text style={styles.priceLabel}>가격 정보 없음</Text>
-          )}
+          <View style={styles.priceWrap}>
+            <Text style={styles.priceLabel}>판매가</Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.salePrice}>10,000</Text>
+              <Text style={styles.priceUnit}>원</Text>
+            </View>
+          </View>
           <View style={styles.btnRow}>
             <TouchableOpacity
               style={[styles.cartBtn, inCart && styles.cartBtnActive]}
@@ -295,12 +279,9 @@ export default function BookDetailScreen() {
             >
               <Ionicons
                 name={inCart ? 'cart' : 'cart-outline'}
-                size={18}
+                size={20}
                 color={inCart ? Colors.white : Colors.primary}
               />
-              <Text style={[styles.cartBtnText, inCart && styles.cartBtnTextActive]}>
-                {inCart ? '담기 취소' : '장바구니'}
-              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.purchaseBtn, purchased && styles.purchasedBtn]}
