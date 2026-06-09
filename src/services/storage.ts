@@ -113,10 +113,10 @@ export async function getCart(): Promise<CartItem[]> {
   return raw ? JSON.parse(raw) : [];
 }
 
-export async function addToCart(book: Book): Promise<void> {
+export async function addToCart(book: Book, quantity: number = 1): Promise<void> {
   const cart = await getCart();
   if (cart.some(i => i.book.isbn === book.isbn)) return;
-  await AsyncStorage.setItem(KEYS.CART, JSON.stringify([...cart, { book, quantity: 1 }]));
+  await AsyncStorage.setItem(KEYS.CART, JSON.stringify([...cart, { book, quantity }]));
 }
 
 export async function removeFromCart(isbn: string): Promise<void> {

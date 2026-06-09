@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../contexts/ThemeContext';
 import {
   isPurchased, addRecentBook,
-  isInCart, addToCart, removeFromCart, updateCartQuantity,
+  isInCart, addToCart, removeFromCart,
   getPurchaseCount,
 } from '../services/storage';
 import { searchBooks, getTodayRecommended } from '../services/bookApi';
@@ -132,8 +132,7 @@ export default function BookDetailScreen() {
   }, [inCart, book, openCartModal]);
 
   const handleAddToCart = useCallback(async () => {
-    await addToCart(book);
-    await updateCartQuantity(book.isbn, quantity);
+    await addToCart(book, quantity);
     setInCart(true);
     closeCartModal();
     showToast();
