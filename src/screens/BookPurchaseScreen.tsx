@@ -55,12 +55,15 @@ export default function BookPurchaseScreen() {
 
     header: {
       flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 16, paddingVertical: 14,
+      paddingHorizontal: 16, paddingVertical: 12,
       backgroundColor: Colors.card,
       borderBottomWidth: 1, borderBottomColor: Colors.border,
-      gap: 8,
     },
-    backBtn: { padding: 2 },
+    headerBackBtn: {
+      width: 32, height: 32, borderRadius: 8,
+      justifyContent: 'center', alignItems: 'center',
+      marginRight: 8,
+    },
     headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
 
     scroll: { flex: 1 },
@@ -234,8 +237,8 @@ export default function BookPurchaseScreen() {
     <SafeAreaView style={s.container}>
       {/* 헤더 */}
       <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
+        <TouchableOpacity style={s.headerBackBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>구매하기</Text>
       </View>
