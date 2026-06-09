@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, Image, ScrollView, StyleSheet,
   TouchableOpacity, Alert, SafeAreaView, Linking,
+  Modal, Animated,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../contexts/ThemeContext';
 import {
   isPurchased, addPurchasedBook, removePurchasedBook, addRecentBook,
-  isInCart, addToCart, removeFromCart,
+  isInCart, addToCart, removeFromCart, updateCartQuantity,
 } from '../services/storage';
 import { searchBooks, getTodayRecommended } from '../services/bookApi';
 import { Book } from '../types';
@@ -20,6 +21,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 type Route = RouteProp<RootStackParamList, 'BookDetail'>;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+const UNIT_PRICE = 10000;
+
 export default function BookDetailScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
@@ -29,6 +32,45 @@ export default function BookDetailScreen() {
   const [purchased, setPurchased] = useState(false);
   const [inCart, setInCart] = useState(false);
   const [related, setRelated] = useState<Book[]>([]);
+
+  // 장바구니 바텀시트
+  const [cartModalVisible, setCartModalVisible] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+  const sheetAnim = useRef(new Animated.Value(500)).current;
+
+  // 토스트
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastVisible(true);
+    toastAnim.setValue(0);
+    Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true, bounciness: 6 }).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setToastVisible(false);
+      });
+    }, 2500);
+  }, [toastAnim]);
+
+  const openCartModal = useCallback(() => {
+    setQuantity(1);
+    setCartModalVisible(true);
+    Animated.parallel([
+      Animated.timing(backdropAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(sheetAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, [backdropAnim, sheetAnim]);
+
+  const closeCartModal = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(backdropAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(sheetAnim, { toValue: 500, duration: 250, useNativeDriver: true }),
+    ]).start(() => setCartModalVisible(false));
+  }, [backdropAnim, sheetAnim]);
 
   useEffect(() => {
     (async () => {
@@ -71,15 +113,27 @@ export default function BookDetailScreen() {
     }
   }, [book, purchased]);
 
-  const handleCartToggle = useCallback(async () => {
+  const handleCartBtnPress = useCallback(() => {
     if (inCart) {
-      await removeFromCart(book.isbn);
-      setInCart(false);
+      Alert.alert('장바구니 취소', '장바구니에서 제거할까요?', [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '제거', style: 'destructive',
+          onPress: async () => { await removeFromCart(book.isbn); setInCart(false); },
+        },
+      ]);
     } else {
-      await addToCart(book);
-      setInCart(true);
+      openCartModal();
     }
-  }, [book, inCart]);
+  }, [inCart, book, openCartModal]);
+
+  const handleAddToCart = useCallback(async () => {
+    await addToCart(book);
+    await updateCartQuantity(book.isbn, quantity);
+    setInCart(true);
+    closeCartModal();
+    showToast();
+  }, [book, quantity, closeCartModal, showToast]);
 
   const handleRelatedPress = useCallback(async (relatedBook: Book) => {
     await addRecentBook(relatedBook);
@@ -112,19 +166,12 @@ export default function BookDetailScreen() {
     ? new Date(book.datetime).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
     : '';
 
-  const displayPrice = book.price > 0 ? book.price : null;
-  const salePrice = book.sale_price > 0 ? book.sale_price : displayPrice;
-  const discountRate = displayPrice && salePrice && salePrice < displayPrice
-    ? Math.round((1 - salePrice / displayPrice) * 100)
-    : 0;
-
   const isbnList = book.isbn.split(' ').filter(Boolean);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     scroll: { flex: 1 },
     divider: { height: 8, backgroundColor: Colors.background },
-    sectionDivider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 20 },
 
     // 히어로
     hero: { backgroundColor: Colors.card, padding: 20, flexDirection: 'row' },
@@ -155,7 +202,7 @@ export default function BookDetailScreen() {
       lineHeight: 22, fontStyle: 'italic',
     },
 
-    // 가격
+    // 가격 + 버튼
     priceSection: {
       backgroundColor: Colors.card, paddingHorizontal: 20, paddingVertical: 16,
       flexDirection: 'row', alignItems: 'center',
@@ -167,13 +214,11 @@ export default function BookDetailScreen() {
     priceUnit: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 2 },
     btnRow: { flexDirection: 'row', gap: 8 },
     cartBtn: {
-      width: 44, height: 44, borderRadius: 10, flexDirection: 'row',
+      width: 44, height: 44, borderRadius: 10,
       borderWidth: 1.5, borderColor: Colors.primary,
       justifyContent: 'center', alignItems: 'center',
     },
     cartBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-    cartBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
-    cartBtnTextActive: { color: Colors.white },
     purchaseBtn: {
       height: 44, paddingHorizontal: 16, backgroundColor: Colors.primary,
       borderRadius: 10, justifyContent: 'center', alignItems: 'center',
@@ -215,6 +260,61 @@ export default function BookDetailScreen() {
       marginTop: 12, gap: 4,
     },
     sellerLinkText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
+
+    // 바텀시트 모달
+    modalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    modalContainer: { flex: 1, justifyContent: 'flex-end' },
+    modalSheet: {
+      backgroundColor: Colors.card,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 40,
+    },
+    modalHandle: {
+      width: 40, height: 4, backgroundColor: Colors.border,
+      borderRadius: 2, alignSelf: 'center', marginBottom: 20,
+    },
+    modalTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, marginBottom: 20 },
+    modalBookRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      marginBottom: 24,
+      paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    },
+    modalThumb: { width: 52, height: 74, borderRadius: 8, backgroundColor: Colors.border },
+    modalBookTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, flex: 1, lineHeight: 20 },
+    modalBookPrice: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
+    qtyLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 12 },
+    qtyRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      marginBottom: 24,
+    },
+    qtyControls: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+    qtyBtn: {
+      width: 40, height: 40, borderRadius: 10,
+      backgroundColor: Colors.background, borderWidth: 1.5, borderColor: Colors.border,
+      justifyContent: 'center', alignItems: 'center',
+    },
+    qtyBtnDisabled: { borderColor: Colors.border, opacity: 0.4 },
+    qtyNum: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, minWidth: 32, textAlign: 'center' },
+    totalText: { fontSize: 18, fontWeight: '800', color: Colors.primary },
+    modalBtnRow: { flexDirection: 'row', gap: 10 },
+    modalBtn: {
+      flex: 1, height: 52, borderRadius: 12,
+      justifyContent: 'center', alignItems: 'center',
+    },
+
+    // 토스트
+    toast: {
+      position: 'absolute', top: 16, alignSelf: 'center',
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: '#1A1A2E', borderRadius: 24,
+      paddingHorizontal: 18, paddingVertical: 10,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2, shadowRadius: 8, elevation: 8,
+    },
+    toastText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   }), [Colors]);
 
   return (
@@ -274,7 +374,7 @@ export default function BookDetailScreen() {
           <View style={styles.btnRow}>
             <TouchableOpacity
               style={[styles.cartBtn, inCart && styles.cartBtnActive]}
-              onPress={handleCartToggle}
+              onPress={handleCartBtnPress}
               activeOpacity={0.8}
             >
               <Ionicons
@@ -386,6 +486,87 @@ export default function BookDetailScreen() {
         <View style={{ height: 24 }} />
       </ScrollView>
       <BottomTabBar />
+
+      {/* 장바구니 담기 바텀시트 */}
+      <Modal visible={cartModalVisible} transparent animationType="none">
+        <Animated.View style={[styles.modalBackdrop, { opacity: backdropAnim }]} />
+        <TouchableOpacity
+          style={styles.modalContainer}
+          activeOpacity={1}
+          onPress={closeCartModal}
+        >
+          <Animated.View
+            style={[styles.modalSheet, { transform: [{ translateY: sheetAnim }] }]}
+          >
+            <TouchableOpacity activeOpacity={1}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>장바구니에 담기</Text>
+
+              <View style={styles.modalBookRow}>
+                <Image
+                  source={{ uri: book.thumbnail || 'https://via.placeholder.com/52x74' }}
+                  style={styles.modalThumb}
+                  resizeMode="cover"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalBookTitle} numberOfLines={2}>{book.title}</Text>
+                  <Text style={styles.modalBookPrice}>{UNIT_PRICE.toLocaleString()}원 / 권</Text>
+                </View>
+              </View>
+
+              <Text style={styles.qtyLabel}>수량 선택</Text>
+              <View style={styles.qtyRow}>
+                <View style={styles.qtyControls}>
+                  <TouchableOpacity
+                    style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
+                    onPress={() => setQuantity(q => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                  >
+                    <Ionicons name="remove" size={18} color={Colors.textPrimary} />
+                  </TouchableOpacity>
+                  <Text style={styles.qtyNum}>{quantity}</Text>
+                  <TouchableOpacity
+                    style={styles.qtyBtn}
+                    onPress={() => setQuantity(q => q + 1)}
+                  >
+                    <Ionicons name="add" size={18} color={Colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.totalText}>{(UNIT_PRICE * quantity).toLocaleString()}원</Text>
+              </View>
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: Colors.border }]}
+                  onPress={closeCartModal}
+                >
+                  <Text style={{ color: Colors.textSecondary, fontWeight: '600' }}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: Colors.primary }]}
+                  onPress={handleAddToCart}
+                >
+                  <Text style={{ color: Colors.white, fontWeight: '700' }}>장바구니에 추가</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 장바구니 추가 토스트 */}
+      <Modal visible={toastVisible} transparent animationType="none" statusBarTranslucent>
+        <Animated.View
+          style={[styles.toast, {
+            opacity: toastAnim,
+            transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
+          }]}
+          pointerEvents="none"
+        >
+          <Ionicons name="checkmark-circle" size={16} color="#4ade80" />
+          <Text style={styles.toastText}>장바구니에 추가되었습니다.</Text>
+        </Animated.View>
+      </Modal>
     </SafeAreaView>
   );
 }
