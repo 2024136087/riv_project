@@ -27,6 +27,11 @@ export interface PaymentCard {
   expiry: string;     // MM/YY
 }
 
+export interface CartItem {
+  book: Book;
+  quantity: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';

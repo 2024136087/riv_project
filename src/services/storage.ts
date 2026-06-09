@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Book, User, PaymentCard } from '../types';
+import { Book, User, PaymentCard, CartItem } from '../types';
 
 const KEYS = {
   USER: 'riv_user',
@@ -8,6 +8,7 @@ const KEYS = {
   PURCHASED_BOOKS: 'riv_purchased_books',
   CASH: 'riv_cash',
   CARDS: 'riv_cards',
+  CART: 'riv_cart',
 };
 
 // User
@@ -103,4 +104,37 @@ export async function addCard(card: PaymentCard): Promise<void> {
 export async function removeCard(id: string): Promise<void> {
   const cards = await getCards();
   await AsyncStorage.setItem(KEYS.CARDS, JSON.stringify(cards.filter(c => c.id !== id)));
+}
+
+// Cart
+export async function getCart(): Promise<CartItem[]> {
+  const raw = await AsyncStorage.getItem(KEYS.CART);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export async function addToCart(book: Book): Promise<void> {
+  const cart = await getCart();
+  if (cart.some(i => i.book.isbn === book.isbn)) return;
+  await AsyncStorage.setItem(KEYS.CART, JSON.stringify([...cart, { book, quantity: 1 }]));
+}
+
+export async function removeFromCart(isbn: string): Promise<void> {
+  const cart = await getCart();
+  await AsyncStorage.setItem(KEYS.CART, JSON.stringify(cart.filter(i => i.book.isbn !== isbn)));
+}
+
+export async function updateCartQuantity(isbn: string, quantity: number): Promise<void> {
+  const cart = await getCart();
+  await AsyncStorage.setItem(KEYS.CART, JSON.stringify(
+    cart.map(i => i.book.isbn === isbn ? { ...i, quantity } : i)
+  ));
+}
+
+export async function clearCart(): Promise<void> {
+  await AsyncStorage.removeItem(KEYS.CART);
+}
+
+export async function isInCart(isbn: string): Promise<boolean> {
+  const cart = await getCart();
+  return cart.some(i => i.book.isbn === isbn);
 }

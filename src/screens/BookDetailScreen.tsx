@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, Image, ScrollView, StyleSheet,
-  TouchableOpacity, Alert, SafeAreaView,
+  TouchableOpacity, Alert, SafeAreaView, Linking,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../contexts/ThemeContext';
 import {
-  isPurchased, addPurchasedBook, removePurchasedBook,
+  isPurchased, addPurchasedBook, removePurchasedBook, addRecentBook,
+  isInCart, addToCart, removeFromCart,
 } from '../services/storage';
-import { searchBooks } from '../services/bookApi';
+import { searchBooks, getTodayRecommended } from '../services/bookApi';
 import { Book } from '../types';
 import BookCard from '../components/BookCard';
 import BottomTabBar from '../components/BottomTabBar';
 import { RootStackParamList } from '../../App';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { addRecentBook } from '../services/storage';
 
 type Route = RouteProp<RootStackParamList, 'BookDetail'>;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -26,16 +27,31 @@ export default function BookDetailScreen() {
   const { book } = route.params;
 
   const [purchased, setPurchased] = useState(false);
+  const [inCart, setInCart] = useState(false);
   const [related, setRelated] = useState<Book[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [p, rel] = await Promise.all([
+      const exclude = (books: Book[]) => books.filter(b => b.isbn !== book.isbn).slice(0, 6);
+
+      const [p, cart, byAuthor] = await Promise.all([
         isPurchased(book.isbn),
+        isInCart(book.isbn),
         searchBooks(book.authors[0] ?? book.title),
       ]);
+      setInCart(cart);
       setPurchased(p);
-      setRelated(rel.filter(b => b.isbn !== book.isbn).slice(0, 6));
+
+      let result = exclude(byAuthor);
+      if (result.length === 0) {
+        const byPublisher = await searchBooks(book.publisher);
+        result = exclude(byPublisher);
+      }
+      if (result.length === 0) {
+        const popular = await getTodayRecommended();
+        result = exclude(popular);
+      }
+      setRelated(result);
     })();
   }, [book]);
 
@@ -44,12 +60,8 @@ export default function BookDetailScreen() {
       Alert.alert('구매 취소', '구매 목록에서 삭제할까요?', [
         { text: '취소', style: 'cancel' },
         {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            await removePurchasedBook(book.isbn);
-            setPurchased(false);
-          },
+          text: '삭제', style: 'destructive',
+          onPress: async () => { await removePurchasedBook(book.isbn); setPurchased(false); },
         },
       ]);
     } else {
@@ -59,18 +71,23 @@ export default function BookDetailScreen() {
     }
   }, [book, purchased]);
 
-  const handleRelatedPress = useCallback(
-    async (relatedBook: Book) => {
-      await addRecentBook(relatedBook);
-      navigation.push('BookDetail', { book: relatedBook });
-    },
-    [navigation]
-  );
+  const handleCartToggle = useCallback(async () => {
+    if (inCart) {
+      await removeFromCart(book.isbn);
+      setInCart(false);
+    } else {
+      await addToCart(book);
+      setInCart(true);
+    }
+  }, [book, inCart]);
 
-  const writerRoles = ['지은이', '글', '저', '글쓴이', '저자'];
-  const translatorRoles = ['옮긴이', '옮김', '역', '번역', '편역'];
+  const handleRelatedPress = useCallback(async (relatedBook: Book) => {
+    await addRecentBook(relatedBook);
+    navigation.push('BookDetail', { book: relatedBook });
+  }, [navigation]);
 
   const parseAuthors = (authors: string[]) => {
+    const translatorRoles = ['옮긴이', '옮김', '역', '번역', '편역'];
     const parts = authors.join(', ').split(';').map(p => p.trim()).filter(Boolean);
     const writers: string[] = [];
     const translators: string[] = [];
@@ -92,94 +109,122 @@ export default function BookDetailScreen() {
   const { writers, translators } = parseAuthors(book.authors);
 
   const publishDate = book.datetime
-    ? new Date(book.datetime).toLocaleDateString('ko-KR', {
-        year: 'numeric', month: 'long', day: 'numeric',
-      })
+    ? new Date(book.datetime).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
     : '';
+
+  const displayPrice = book.price > 0 ? book.price : null;
+  const salePrice = book.sale_price > 0 ? book.sale_price : displayPrice;
+  const discountRate = displayPrice && salePrice && salePrice < displayPrice
+    ? Math.round((1 - salePrice / displayPrice) * 100)
+    : 0;
+
+  const isbnList = book.isbn.split(' ').filter(Boolean);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     scroll: { flex: 1 },
-    hero: {
-      flexDirection: 'row',
-      padding: 20,
-      backgroundColor: Colors.card,
-    },
+    divider: { height: 8, backgroundColor: Colors.background },
+    sectionDivider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 20 },
+
+    // 히어로
+    hero: { backgroundColor: Colors.card, padding: 20, flexDirection: 'row' },
     cover: {
-      width: 100,
-      height: 142,
-      borderRadius: 8,
+      width: 110, height: 158, borderRadius: 10,
       backgroundColor: Colors.border,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2, shadowRadius: 8, elevation: 5,
     },
-    heroInfo: {
-      flex: 1,
-      marginLeft: 16,
-      justifyContent: 'flex-start',
-      paddingTop: 4,
+    heroInfo: { flex: 1, marginLeft: 18, justifyContent: 'flex-start', paddingTop: 2 },
+    title: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, lineHeight: 25 },
+    authorRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 },
+    authorBadge: {
+      backgroundColor: Colors.primaryLight, borderRadius: 6,
+      paddingHorizontal: 7, paddingVertical: 2,
     },
-    title: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: Colors.textPrimary,
-      lineHeight: 24,
+    authorBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+    authorName: { fontSize: 13, color: Colors.textSecondary, flex: 1 },
+    publisherText: { fontSize: 12, color: Colors.textHint, marginTop: 6 },
+
+    // 간단 설명
+    briefSection: {
+      backgroundColor: Colors.card, paddingHorizontal: 20, paddingVertical: 16,
+      flexDirection: 'row', alignItems: 'flex-start', gap: 10,
     },
-    author: {
-      fontSize: 14,
-      color: Colors.textSecondary,
-      marginTop: 6,
+    briefText: {
+      flex: 1, fontSize: 14, color: Colors.textSecondary,
+      lineHeight: 22, fontStyle: 'italic',
     },
-    publisher: {
-      fontSize: 12,
-      color: Colors.textHint,
-      marginTop: 4,
+
+    // 가격
+    priceSection: { backgroundColor: Colors.card, padding: 20 },
+    priceLabel: { fontSize: 12, color: Colors.textSecondary, marginBottom: 6 },
+    priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+    discountRate: { fontSize: 26, fontWeight: '800', color: Colors.error },
+    salePrice: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+    priceUnit: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary, marginBottom: 2 },
+    originalPriceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
+    originalPriceLabel: { fontSize: 12, color: Colors.textHint },
+    originalPrice: {
+      fontSize: 13, color: Colors.textHint,
+      textDecorationLine: 'line-through',
     },
-    date: {
-      fontSize: 12,
-      color: Colors.textHint,
-      marginTop: 2,
+    btnRow: { flexDirection: 'row', marginTop: 16, gap: 10 },
+    cartBtn: {
+      flex: 1, height: 52, borderRadius: 12, flexDirection: 'row',
+      borderWidth: 1.5, borderColor: Colors.primary,
+      justifyContent: 'center', alignItems: 'center', gap: 6,
     },
-    price: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: Colors.primary,
-      marginTop: 10,
-    },
+    cartBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+    cartBtnText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
+    cartBtnTextActive: { color: Colors.white },
     purchaseBtn: {
-      marginHorizontal: 20,
-      marginTop: 16,
-      height: 50,
-      backgroundColor: Colors.primary,
-      borderRadius: 12,
-      justifyContent: 'center',
-      alignItems: 'center',
+      flex: 1, height: 52, backgroundColor: Colors.primary,
+      borderRadius: 12, justifyContent: 'center', alignItems: 'center',
     },
-    purchasedBtn: {
-      backgroundColor: Colors.border,
+    purchasedBtn: { backgroundColor: Colors.border },
+    purchaseBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700' },
+
+    // 책 소개
+    section: { backgroundColor: Colors.card, padding: 20 },
+    sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, marginBottom: 14 },
+    contents: { fontSize: 14, lineHeight: 24, color: Colors.textSecondary },
+
+    // 상세 정보 테이블
+    infoTable: { gap: 0 },
+    infoRow: {
+      flexDirection: 'row', paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: Colors.border,
     },
-    purchaseBtnText: {
-      color: Colors.white,
-      fontSize: 16,
-      fontWeight: '700',
+    infoRowLast: { borderBottomWidth: 0 },
+    infoKey: { width: 90, fontSize: 13, color: Colors.textHint, fontWeight: '600' },
+    infoVal: { flex: 1, fontSize: 13, color: Colors.textPrimary, lineHeight: 20 },
+
+    // 판매자 정보
+    sellerCard: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: Colors.background, borderRadius: 12,
+      padding: 14, borderWidth: 1, borderColor: Colors.border,
     },
-    section: {
-      padding: 20,
+    sellerLogo: {
+      width: 44, height: 44, borderRadius: 10,
+      backgroundColor: '#FFEB00', justifyContent: 'center', alignItems: 'center',
+      marginRight: 14,
     },
-    sectionTitle: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: Colors.textPrimary,
-      marginBottom: 10,
+    sellerLogoText: { fontSize: 16, fontWeight: '900', color: '#1A1A1A' },
+    sellerName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+    sellerDesc: { fontSize: 12, color: Colors.textSecondary, marginTop: 3 },
+    sellerLink: {
+      flexDirection: 'row', alignItems: 'center',
+      marginTop: 12, gap: 4,
     },
-    contents: {
-      fontSize: 14,
-      lineHeight: 22,
-      color: Colors.textSecondary,
-    },
+    sellerLinkText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
   }), [Colors]);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* 히어로 */}
         <View style={styles.hero}>
           <Image
             source={{ uri: book.thumbnail || 'https://via.placeholder.com/120x170' }}
@@ -189,44 +234,172 @@ export default function BookDetailScreen() {
           <View style={styles.heroInfo}>
             <Text style={styles.title}>{book.title}</Text>
             {writers.length > 0 && (
-              <Text style={styles.author}>지은이  {writers.join(', ')}</Text>
+              <View style={styles.authorRow}>
+                <View style={styles.authorBadge}><Text style={styles.authorBadgeText}>지은이</Text></View>
+                <Text style={styles.authorName}>{writers.join(', ')}</Text>
+              </View>
             )}
             {translators.length > 0 && (
-              <Text style={styles.author}>옮긴이  {translators.join(', ')}</Text>
+              <View style={styles.authorRow}>
+                <View style={styles.authorBadge}><Text style={styles.authorBadgeText}>옮긴이</Text></View>
+                <Text style={styles.authorName}>{translators.join(', ')}</Text>
+              </View>
             )}
-            <Text style={styles.publisher}>{book.publisher}</Text>
-            {publishDate ? <Text style={styles.date}>{publishDate}</Text> : null}
-            {book.sale_price > 0 && (
-              <Text style={styles.price}>{book.sale_price.toLocaleString()}원</Text>
-            )}
+            <Text style={styles.publisherText}>{book.publisher}</Text>
+            {publishDate ? <Text style={styles.publisherText}>{publishDate}</Text> : null}
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.purchaseBtn, purchased && styles.purchasedBtn]}
-          onPress={handlePurchaseToggle}
-        >
-          <Text style={styles.purchaseBtnText}>
-            {purchased ? '구매 취소' : '구매하기'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.divider} />
 
+        {/* 간단한 설명 */}
         {book.contents ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>책 소개</Text>
-            <Text style={styles.contents}>{book.contents}</Text>
-          </View>
+          <>
+            <View style={styles.briefSection}>
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.primary} />
+              <Text style={styles.briefText}>
+                {book.contents.length > 120 ? book.contents.slice(0, 120) + '…' : book.contents}
+              </Text>
+            </View>
+            <View style={styles.divider} />
+          </>
         ) : null}
 
-        {related.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>함께 읽기 좋은 책</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {related.map(b => (
-                <BookCard key={b.isbn + b.title} book={b} onPress={handleRelatedPress} />
-              ))}
-            </ScrollView>
+        {/* 가격 */}
+        <View style={styles.priceSection}>
+          {salePrice ? (
+            <>
+              <Text style={styles.priceLabel}>판매가</Text>
+              <View style={styles.priceRow}>
+                {discountRate > 0 && (
+                  <Text style={styles.discountRate}>{discountRate}%</Text>
+                )}
+                <Text style={styles.salePrice}>{salePrice.toLocaleString()}</Text>
+                <Text style={styles.priceUnit}>원</Text>
+              </View>
+              {discountRate > 0 && displayPrice && (
+                <View style={styles.originalPriceRow}>
+                  <Text style={styles.originalPriceLabel}>정가</Text>
+                  <Text style={styles.originalPrice}>{displayPrice.toLocaleString()}원</Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <Text style={styles.priceLabel}>가격 정보 없음</Text>
+          )}
+          <View style={styles.btnRow}>
+            <TouchableOpacity
+              style={[styles.cartBtn, inCart && styles.cartBtnActive]}
+              onPress={handleCartToggle}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={inCart ? 'cart' : 'cart-outline'}
+                size={18}
+                color={inCart ? Colors.white : Colors.primary}
+              />
+              <Text style={[styles.cartBtnText, inCart && styles.cartBtnTextActive]}>
+                {inCart ? '담기 취소' : '장바구니'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.purchaseBtn, purchased && styles.purchasedBtn]}
+              onPress={handlePurchaseToggle}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.purchaseBtnText}>
+                {purchased ? '구매 취소' : '구매하기'}
+              </Text>
+            </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* 책 소개 */}
+        {book.contents ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>책 소개</Text>
+              <Text style={styles.contents}>{book.contents}</Text>
+            </View>
+            <View style={styles.divider} />
+          </>
+        ) : null}
+
+        {/* 상세 정보 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>상세 정보</Text>
+          <View style={styles.infoTable}>
+            {writers.length > 0 && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoKey}>지은이</Text>
+                <Text style={styles.infoVal}>{writers.join(', ')}</Text>
+              </View>
+            )}
+            {translators.length > 0 && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoKey}>옮긴이</Text>
+                <Text style={styles.infoVal}>{translators.join(', ')}</Text>
+              </View>
+            )}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoKey}>출판사</Text>
+              <Text style={styles.infoVal}>{book.publisher}</Text>
+            </View>
+            {publishDate ? (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoKey}>출판일</Text>
+                <Text style={styles.infoVal}>{publishDate}</Text>
+              </View>
+            ) : null}
+            {isbnList.map((isbn, i) => (
+              <View key={isbn} style={[styles.infoRow, i === isbnList.length - 1 && styles.infoRowLast]}>
+                <Text style={styles.infoKey}>{i === 0 ? 'ISBN' : 'ISBN-13'}</Text>
+                <Text style={styles.infoVal}>{isbn}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* 판매자 정보 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>판매자 정보</Text>
+          <View style={styles.sellerCard}>
+            <View style={styles.sellerLogo}>
+              <Text style={styles.sellerLogoText}>K</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sellerName}>카카오 북스</Text>
+              <Text style={styles.sellerDesc}>Kakao Corp. 공식 도서 판매 플랫폼</Text>
+            </View>
+            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+          </View>
+          {book.url ? (
+            <TouchableOpacity style={styles.sellerLink} onPress={() => Linking.openURL(book.url)}>
+              <Ionicons name="open-outline" size={14} color={Colors.primary} />
+              <Text style={styles.sellerLinkText}>카카오 북스에서 보기</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* 함께 읽기 좋은 책 */}
+        {related.length > 0 && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>함께 읽기 좋은 책</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {related.map(b => (
+                  <BookCard key={b.isbn + b.title} book={b} onPress={handleRelatedPress} />
+                ))}
+              </ScrollView>
+            </View>
+            <View style={styles.divider} />
+          </>
         )}
 
         <View style={{ height: 24 }} />

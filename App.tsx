@@ -16,6 +16,8 @@ import ProfileEditScreen from './src/screens/ProfileEditScreen';
 import GenreSelectScreen from './src/screens/GenreSelectScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import PasswordChangeScreen from './src/screens/PasswordChangeScreen';
+import CashPaymentScreen from './src/screens/CashPaymentScreen';
+import CartScreen from './src/screens/CartScreen';
 import { ThemeProvider, useColors, useTheme } from './src/contexts/ThemeContext';
 import { Book } from './src/types';
 
@@ -28,6 +30,8 @@ export type RootStackParamList = {
   GenreSelect: undefined;
   Welcome: { userName: string };
   PasswordChange: undefined;
+  CashPayment: { amount: number; books?: Book[] };
+  Cart: undefined;
 };
 
 export type TabParamList = {
@@ -133,6 +137,16 @@ function AppNavigator() {
         <Stack.Screen
           name="PasswordChange"
           component={PasswordChangeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CashPayment"
+          component={CashPaymentScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Cart"
+          component={CartScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

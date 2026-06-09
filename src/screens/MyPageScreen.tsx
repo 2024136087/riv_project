@@ -15,8 +15,9 @@ import {
   getLoggedInUser, saveUser, removeUser, endSession,
   getRecentBooks, getPurchasedBooks, addRecentBook,
   getCash, setCash, getCards, addCard, removeCard,
+  getCart, removeFromCart, clearCart, addPurchasedBook,
 } from '../services/storage';
-import { Book, User, PaymentCard } from '../types';
+import { Book, User, PaymentCard, CartItem } from '../types';
 import { RootStackParamList } from '../../App';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -32,6 +33,7 @@ export default function MyPageScreen() {
   const [purchasedBooks, setPurchasedBooks] = useState<Book[]>([]);
   const [cash, setCashState] = useState(0);
   const [cards, setCards] = useState<PaymentCard[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   const [editingGenres, setEditingGenres] = useState(false);
 
@@ -48,10 +50,27 @@ export default function MyPageScreen() {
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
 
+
   const chargeBackdrop = useRef(new Animated.Value(0)).current;
   const chargeSheet = useRef(new Animated.Value(500)).current;
   const cardBackdrop = useRef(new Animated.Value(0)).current;
   const cardSheet = useRef(new Animated.Value(500)).current;
+
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+
+  const showToast = useCallback(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastVisible(true);
+    toastAnim.setValue(0);
+    Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true, bounciness: 6 }).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setToastVisible(false);
+      });
+    }, 2500);
+  }, [toastAnim]);
 
   const openChargeModal = useCallback(() => {
     setChargeModalVisible(true);
@@ -86,14 +105,15 @@ export default function MyPageScreen() {
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [u, rb, pb, c, cds] = await Promise.all([
-          getLoggedInUser(), getRecentBooks(), getPurchasedBooks(), getCash(), getCards(),
+        const [u, rb, pb, c, cds, ct] = await Promise.all([
+          getLoggedInUser(), getRecentBooks(), getPurchasedBooks(), getCash(), getCards(), getCart(),
         ]);
         setUser(u);
         setRecentBooks(rb);
         setPurchasedBooks(pb);
         setCashState(c);
         setCards(cds);
+        setCart(ct);
       })();
     }, [])
   );
@@ -185,17 +205,14 @@ export default function MyPageScreen() {
 
   const chargeAmount = selectedPreset ?? (parseInt(customAmount.replace(/,/g, ''), 10) || 0);
 
-  const handleCharge = useCallback(async () => {
+  const handleCharge = useCallback(() => {
     if (chargeAmount <= 0) { Alert.alert('알림', '충전할 금액을 선택하거나 입력해주세요.'); return; }
-    if (cards.length === 0) { Alert.alert('알림', '먼저 결제 카드를 등록해주세요.'); return; }
-    const newCash = cash + chargeAmount;
-    await setCash(newCash);
-    setCashState(newCash);
+    if (cards.length === 0) { showToast(); return; }
     closeChargeModal();
     setSelectedPreset(null);
     setCustomAmount('');
-    Alert.alert('충전 완료', `${chargeAmount.toLocaleString()}C가 충전되었습니다.\n현재 잔액: ${newCash.toLocaleString()}C`);
-  }, [chargeAmount, cash, cards, closeChargeModal]);
+    navigation.navigate('CashPayment', { amount: chargeAmount });
+  }, [chargeAmount, cards, closeChargeModal, navigation]);
 
   const handleRemoveCard = useCallback((id: string) => {
     setConfirmModal({
@@ -210,6 +227,21 @@ export default function MyPageScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
+    pageHeader: {
+      flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 12,
+      backgroundColor: Colors.card, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    },
+    pageHeaderTitle: { fontSize: 17, fontWeight: '800', color: Colors.textSecondary },
+    cartIconBtn: { padding: 4, position: 'relative' },
+    cartBadgeWrap: { position: 'relative' },
+    cartBadge: {
+      position: 'absolute', top: -4, right: -6,
+      minWidth: 16, height: 16, borderRadius: 8,
+      backgroundColor: Colors.error, justifyContent: 'center', alignItems: 'center',
+      paddingHorizontal: 3,
+    },
+    cartBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
     profileSection: {
       backgroundColor: Colors.card, margin: 16, marginBottom: 24, borderRadius: 14,
@@ -376,6 +408,42 @@ export default function MyPageScreen() {
       marginBottom: 16, backgroundColor: Colors.background,
     },
     modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+
+    cartItem: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
+      gap: 12,
+    },
+    cartItemLast: { borderBottomWidth: 0 },
+    cartThumb: { width: 44, height: 62, borderRadius: 6, backgroundColor: Colors.border },
+    cartItemInfo: { flex: 1 },
+    cartItemTitle: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, lineHeight: 20 },
+    cartItemAuthor: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+    cartItemPrice: { fontSize: 14, fontWeight: '700', color: Colors.primary, marginTop: 4 },
+    cartDeleteBtn: { padding: 6 },
+    cartFooter: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      marginTop: 16, paddingTop: 14, borderTopWidth: 1.5, borderTopColor: Colors.border,
+    },
+    cartTotal: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+    cartTotalAmount: { color: Colors.primary },
+    cartBuyBtn: {
+      backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 10,
+      borderRadius: 10,
+    },
+    cartBuyBtnText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+    cartEmpty: { fontSize: 13, color: Colors.textHint, paddingVertical: 8 },
+
+    toast: {
+      position: 'absolute', top: 16, alignSelf: 'center',
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: '#1A1A2E', borderRadius: 24,
+      paddingHorizontal: 18, paddingVertical: 10,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2, shadowRadius: 8, elevation: 8,
+      zIndex: 999,
+    },
+    toastText: { color: '#fff', fontSize: 13, fontWeight: '600' },
     modalBtn: {
       flex: 1, height: 50, borderRadius: 12,
       justifyContent: 'center', alignItems: 'center',
@@ -384,6 +452,21 @@ export default function MyPageScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 페이지 헤더 */}
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageHeaderTitle}>마이페이지</Text>
+        <TouchableOpacity style={styles.cartBadgeWrap} onPress={() => navigation.navigate('Cart')} activeOpacity={0.7}>
+          <Ionicons name="cart-outline" size={26} color={Colors.textPrimary} />
+          {cart.length > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>
+                {cart.reduce((s, i) => s + i.quantity, 0)}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
 
         {/* 프로필 */}
@@ -744,6 +827,17 @@ export default function MyPageScreen() {
             </View>
           </Animated.View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* 카드 미등록 토스트 — 항상 최상단 레이어 */}
+      <Modal visible={toastVisible} transparent animationType="none" statusBarTranslucent>
+        <Animated.View style={[styles.toast, {
+          opacity: toastAnim,
+          transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
+        }]} pointerEvents="none">
+          <Ionicons name="warning-outline" size={16} color="#fff" />
+          <Text style={styles.toastText}>결제할 카드가 등록되지 않았습니다.</Text>
+        </Animated.View>
       </Modal>
     </SafeAreaView>
   );
