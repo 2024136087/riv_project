@@ -1,6 +1,6 @@
 import { ChatMessage } from '../types';
 
-const GEMINI_API_KEY: string = 'AIzaSyAj74EN2xTp28B1QWCm7tmxadnkXAtHEH0';
+const GEMINI_API_KEY: string = 'AQ.Ab8RN6JDoh50gYt4uZDoyomwlK1dM4UbZc74ycE9MpQmE6kSkQ';
 const GEMINI_MODELS = [
   'gemini-2.5-flash',
   'gemini-2.0-flash',
